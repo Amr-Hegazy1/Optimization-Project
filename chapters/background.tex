@@ -1,4 +1,82 @@
-\chapter{Literature Review}\label{chap:background}
 
+Shen \textit{et al.} (2025) \cite{shen_2025_multicap} introduced \textbf{Multi-CAP}, a hierarchical algorithm for multi-robot coverage path planning in unknown environments. The main objective of their approach is to enable multiple robots to cooperatively explore and cover a given area while minimizing redundant paths and maintaining network connectivity among robots.
 
-%\let\cleardoublepage\clearpage
+The \textbf{problem is formulated} as an adjacency graph $G = (N, E)$, where $N$ represents the subareas to be covered and $E$ denotes the possible travel paths between them. Each robot starts from a known position and is assigned a sequence of subareas to visit, ensuring that all regions are covered with minimal total travel distance.
+
+The \textbf{decision variables} define which subareas are assigned to each robot and in what visiting order. Each route must begin at the robot’s starting point and terminate at its final visited subarea, without requiring a return to the start (open route). 
+
+The \textbf{objective function} aims to minimize the total travel cost of all robots:
+\begin{equation}
+J(\Pi) = \sum_{m=1}^{M} \sum_{k=0}^{K_m - 1} w_{n_m(k),\, n_m(k+1)}
+\end{equation}
+where $M$ is the number of robots, $K_m$ is the number of subareas assigned to robot $m$, and $w_{ij}$ represents the travel cost ( distance) between subareas $i$ and $j$.
+
+The problem is subject to several \textbf{constraints}: 
+(1) every subarea must be visited exactly once (coverage constraint), 
+(2) no subarea is assigned to more than one robot (assignment constraint), 
+(3) all robot movements must follow valid edges in $E$ (connectivity constraint), and 
+(4) each robot’s path must follow an open-route structure.
+
+Shen \textit{et al.} applied a two-stage heuristic \textbf{optimization approach}. In the first stage, a \textit{Nearest-Neighbor heuristic} assigns subareas to robots based on proximity, generating initial feasible routes with minimal overlap. In the second stage, a \textit{2-Opt local search algorithm} refines each route by iteratively adjusting the visiting order to reduce total travel distance.
+
+Finally, each robot performs local coverage within its assigned region using a back and forth sweeping motion or by solving a small local Traveling Salesman Problem (TSP) with the 2-Opt method to ensure complete coverage. This hierarchical framework achieves efficient, connectivity aware exploration while minimizing total path length and coverage time.
+
+In a different study, Mikkelsen \textit{et al.} (2024) \cite{mikkelsen_2024_optimal} presented a novel approach for solving the Multi-Robot Communication-Aware Trajectory Planning (MR-CaTP) problem, which reformulates a general optimization framework by using changes in robot positions as decision variables and introducing linear constraints to ensure communication performance via the Fiedler value (the second smallest eigenvalue of the graph Laplacian) and collision avoidance.
+
+The \textbf{problem is formulated} as a receding horizon optimization over \(K\) steps for a swarm of \(N\) holonomic robots in \(\mathbb{R}^n\), where the communication network is modeled as a time-varying undirected graph \(G(t) = (\mathcal{V}, E(t))\) with edge weights \(w_{ij}(t)\) representing link quality based on inter-robot distances. The goal is to compute feasible and optimal trajectories that maintain network connectivity while fulfilling task-specific objectives, such as inspection or arbitrary motion with communication insurance.
+
+The \textbf{decision variables} are the concatenated sequence of position changes (inputs) over \(K\) future steps, \(\mathbf{U}^k = (\mathbf{u}^k, \mathbf{u}^{k+1}, \dots, \mathbf{u}^{k+K-1}) \in \mathbb{R}^{KnN}\), where each \(\mathbf{u}^{k+h}_i\) defines the change in position for robot \(i\) at step \(k+h\).
+
+The \textbf{objective function} minimizes the sum of a generic cost over the \(K\) steps:
+\begin{equation}
+\min_{\mathbf{U}^k} \sum_{h=0}^{K-1} f(\mathbf{u}^{k+h}),
+\end{equation}
+where \(f(\cdot)\) is task-dependent (e.g., quadratic error to points of interest in inspection tasks or deviation from reference inputs in communication insurance).
+
+The problem is subject to several \textbf{constraints}: 
+(1) predicted kinematics: \(\mathbf{P}^{k+1} = \mathbf{1}_{K \times 1} \otimes \mathbf{p}^k + \mathbf{B} \mathbf{U}^k\), where \(\mathbf{P}^{k+1}\) accumulates future positions and \(\mathbf{B}\) is a lower triangular accumulation matrix, 
+(2) input bounds: \(\|\mathbf{u}^{k+h}_i\|_p \leq \bar{u}\) for all robots \(i\) and steps \(h\), ensuring bounded speed, 
+(3) approximated communication performance: \(\mathbf{M}^k \mathbf{U}^k \geq (\underline{\lambda_2} - \lambda_2^k) \mathbf{1}_{K \times 1}\), a linear perturbation-based constraint to keep predicted Fiedler values \(\hat{\Lambda}^{k+1}_2\) above a lower bound \(\underline{\lambda_2} > 0\) for connectivity, and 
+(4) approximated collision avoidance: \(\tilde{\mathbf{C}}^k \mathbf{U}^k \leq \tilde{\mathbf{d}}^k\), a linear inequality based on buffered Voronoi partitions from the Delaunay triangulation to prevent inter-robot overlaps.
+
+Mikkelsen \textit{et al.} applied this framework in a \textbf{general optimization approximation} using first-order Taylor expansion for Fiedler value prediction and Voronoi-based linearization for tractability, enabling significant computational speedup while remaining close to optimal solutions. In the inspection task application, points of interest are first assigned via minimum perfect matching (solved with the Hungarian algorithm), then trajectories are optimized with a quadratic objective incorporating error to assigned points and Fiedler gradient for relays. In the communication insurance service, the objective minimizes deviation from desired reference inputs, with optional slack variables to soften the Fiedler bound when strict feasibility is challenging. Simulations validate that the Fiedler constraint ensures connectivity at all times, with approximations reducing solve times effectively.
+
+Furthermore, Kashyap \textit{et al.} (2023) \cite{kashyap2025simulations} introduced a hybrid Lévy Flight–Particle Swarm Optimization (LF-PSO) algorithm for multi-robot exploration in Urban Search and Rescue (USAR) scenarios. Unlike previous approaches that assume known maps, global positioning, or unrestricted communication, the LF-PSO model operates in unknown, GPS-denied, and communication-limited environments. The algorithm combines Lévy Flight for random, long-range exploration with PSO-based inter-robot repulsion to prevent clustering and improve coverage. Simulation results in a 20×20 m area showed that LF-PSO achieved about 76\% area coverage, outperforming standalone PSO and LF methods. The study demonstrates a robust, decentralized approach for autonomous robot coordination in real-world search and rescue tasks.
+
+The \textbf{problem is formulated} under assumptions that no initial information about the environment (size or obstacle locations) is known, no global positioning or information about the location of other robots is available, no information about the target or victim’s position is known, and communication is only possible when other robots are within a specified communication radius $d$. Initialization involves randomizing the position and velocity (within the constraints) of the robots in the search space and setting the number of iterations where each iteration represents a time step (e.g., robot at time step t+1 has moved when comparing with respect to robot at time step t). To facilitate comprehensive area coverage, each robot’s path is represented as a sequence of waypoints in the two-dimensional search space. Waypoints are interconnected to form a path that guides the robot through the search area. The order in which waypoints are connected determines the robot’s trajectory. Each waypoint maintains an exploration status to indicate whether it has been visited by the robot or remains unexplored.
+
+The \textbf{decision variables} define the best position of waypoints to achieve most efficient exploration. The main decision variables are derived from the hybrid Lévy Flight - Particle Swarm Optimization (LF-PSO) update equations:
+$x_i(t), y_i(t)$ : Position of robot $i$ at time $t$.
+$V_{i,j}(t)$ : Velocity of robot $i$ in direction $j$ at time $t$.
+$s_i$ : Step size in Lévy Flight movement.
+$L\theta_i$ : Movement direction in Lévy Flight.
+$R\theta_i$ : Repulsion direction from nearby robots.
+$P_{lbx_i}, P_{lby_i}$ : Local best positions (from Lévy Flight exploration), where local means the decision is only based on the Levi Flight Step Distance, not taking any cooperative information from other robots, which affects their motion such as the repulsion mechanism.
+$P_{gbx_i}, P_{gby_i}$ : Global best positions (from repulsive PSO component).
+
+The \textbf{objective function} aims to maximize the total exploration efficiency (fraction of the area explored by all robots):
+\begin{equation}
+\text{Maximize } f = \frac{A_{\text{covered}}}{A_{\text{total}}}
+\end{equation}
+where $A_{\text{covered}}$ = Total area explored by all robots collectively, and $A_{\text{total}}$ = Total area of the environment.
+
+The problem is subject to several \textbf{constraints}: 
+(1) Robots must remain within the map boundaries at all times, 
+(2) Each robot’s velocity $V_i$ and step size $s_i$ are bounded by maximum limits: $0 < V_i \leq V_{max}, \quad 0 < s_i \leq s_{max}$, 
+(3) Step Size Limit (Based on the Levy Flight algorithm), where the Lévy flight algorithm is a type of random walk used in optimization and search algorithms that combines frequent short-distance steps with occasional long-distance jumps (also randomizes motion direction $L_{\theta}$ from), 
+(4) Communication between robots occurs only when they are within a communication range $d$, 
+(5) Obstacles are detected only when within a certain proximity based on the robot’s front, left, and right sensors, 
+(6) Movement in the presence of obstacles follows the policy: Turn $\frac{\pi}{2}$ Left/Right if Left Sensor FALSE, Front Sensor TRUE, Right Sensor FALSE; Turn $\frac{\pi}{2}$ Left if Left Sensor FALSE, Front Sensor TRUE, Right Sensor TRUE; Turn $\frac{\pi}{2}$ Right if Left Sensor TRUE, Front Sensor TRUE, Right Sensor FALSE; Turn $\pi$ if Left Sensor TRUE, Front Sensor TRUE, Right Sensor TRUE; Turn $\frac{\pi}{2}$ Right if Left Sensor TRUE, Front Sensor FALSE, Right Sensor FALSE; Turn $\frac{\pi}{2}$ Left if Left Sensor FALSE, Front Sensor FALSE, Right Sensor TRUE, 
+(7) The repulsion distance $D_j$ between robots $1$ and $2$ is given by $D_j = \frac{1}{d_1} + \frac{1}{d_2}$, 
+(8) Do not pass by an explored way-point. 
+In mathematical formulation, the robot’s motion is governed by: 
+$P_{lbx_j} - x_j = s_j \cos(L\theta_j)$, 
+$P_{lby_j} - y_j = s_j \sin(L\theta_j)$, 
+$P_{gbx_j} - x_j = D_j \cos(R\theta_j)$, 
+$P_{gby_j} - y_j = D_j \sin(R\theta_j)$. 
+The modified PSO velocity and position update equations are (this should change when we use other optimization algorithms): 
+$V_{i,j}(t+1) = \omega V_{i,j}(t) + p_\omega \text{rand}(P_{lb_j}(t) - x_{i,j}(t)) + n_\omega \text{rand}(P_{gb_j}(t) - x_{i,j}(t))$, 
+$x_{i,j}(t+1) = x_{i,j}(t) + V_{i,j}(t+1)$, 
+where $\omega$ is the inertia weight, $p_\omega$ and $n_\omega$ are cognitive and social coefficients respectively.
+
+Kashyap \textit{et al.} applied a \textbf{hybrid LF-PSO optimization approach} that integrates Lévy Flight for exploration with PSO for repulsion-based coordination, updating robot positions and velocities iteratively in a decentralized manner to maximize coverage while adhering to constraints in unknown environments.
