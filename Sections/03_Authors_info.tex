@@ -1,0 +1,30 @@
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%Define the details related to the document submission, authors and supervisors:
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\newcommand{\submissionDay}{DAY}
+\newcommand{\submissionMonth}{MONTH}
+\newcommand{\submissionYear}{2021}
+\newcommand{\submissionDate}{\today}
+\newcommand{\typeOfDocument}{Project Report}
+
+\newcommand{\titleOfProject}{TITLE}
+
+\newcommand{\TeamNumber}{TeamNum}
+\newcommand{\TeamMemberOne}{Member1}
+\newcommand{\TeamMemberTwo}{Member2}
+\newcommand{\TeamMemberThree}{Member3}
+\newcommand{\TeamMemberFour}{Member4}
+\newcommand{\TeamMemberFive}{Member5}
+\newcommand{\supervisorOne}{SUPERVISOR1}
+\newcommand{\supervisorTwo}{SUPERVISOR2}
+\newcommand{\supervisorThree}{SUPERVISOR3}
+
+\ifpdf
+\pdfinfo {
+	/Author (\TeamMemberOne)
+	/Title (\titleOfProject)
+	/Subject (\typeOfDocument)
+	/Keywords ()
+	/CreationDate (D:20090707085533)
+}
+\fi
