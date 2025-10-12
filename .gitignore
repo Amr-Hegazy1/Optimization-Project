@@ -1,0 +1,31 @@
+# LaTeX intermediate files
+*.aux
+*.bbl
+*.blg
+*.brf
+*.fls
+*.fdb_latexmk
+*.log
+*.lof
+*.lot
+*.nav
+*.nlo
+*.out
+*.snm
+*.synctex.gz
+*.toc
+*.vrb
+
+
+# Other temporary files
+*.acn
+*.acr
+*.alg
+*.glg
+*.glo
+*.gls
+*.ist
+*.maf
+*.mtc*
+_minted*
+

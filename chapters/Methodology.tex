@@ -1,28 +1,90 @@
 \chapter{Methodology}\label{chap:Methodology}
 
-Equation \eqref{eq:1} describes the kinematics model of the unicycle
 
-\begin{equation} \label{eq:1}
-\dot{q_i} = 
-\begin{bmatrix}
-	\dot{x_i}\\
-	\dot{y_i}\\
-	\dot{\varphi_i}
-\end{bmatrix}
-=
-S_{1}(q_i)u_i
- \quad , \quad
-  u_i = 
-\begin{bmatrix}
-	v_i\\
-	\omega_i
-\end{bmatrix}
- \quad and \quad
-S_{1}(q_i) = 
-\begin{bmatrix}
-	\cos\varphi_i & 0\\
-	\sin\varphi_i & 0\\
-	0 & 1
-\end{bmatrix}
-\end{equation}
+\section*{Problem Formulation}
 
+\subsection*{Assumptions}
+The environment is a grid map $M \in \{0,1,2\}^{n \times m}$ with unit cells $1\times 1$; $M[x,y]=1$ means free, $0$ means obstacle, and 2 marks a robot's position.
+Obstacles are unknown a priori. As robots explore, newly detected obstacles are shared; let $O_t$ be the set known by time $t$, with $O_t \subseteq O_{t+1}$.
+Robots are points that move synchronously at time steps $t=0,1,\dots,K$ (planning horizon $K$).
+Motion is 4-connected (up, down, left, right) or stay.
+Robots share positions each step; communication desirability between robots is modeled by a weight that decreases with their Euclidean distance.
+
+\subsection*{Map, Robots, and Positions}
+There are $N$ robots indexed by $i=1,\dots,N$. The position of robot $i$ at time $t$ is
+\[
+    p_{i,t} = (x_{i,t}, y_{i,t}), \qquad x_{i,t}\in\{1,\dots,n\},\; y_{i,t}\in\{1,\dots,m\}.
+\]
+Initial positions $p_{i,0}$ are given. The 4-neighborhood motion rule is
+\[
+    |x_{i,t}-x_{i,t-1}| + |y_{i,t}-y_{i,t-1}| \le 1, \qquad \forall i,\; t=1,\dots,K.
+\]
+
+\subsection*{Coverage and Distance-Weighted Connectivity}
+Coverage variable for each cell:
+\[
+C_{x,y}=
+\begin{cases}
+1, & \text{if some robot stands on }(x,y)\text{ at any }t\in\{0{:}K\}, \\
+0, & \text{otherwise.}
+\end{cases}
+\]
+Coverage updates via the visit indicator:
+\[
+C_{x,y} \;\ge\; \mathbf{1}\!\big[(x_{i,t},y_{i,t})=(x,y)\big], \quad \forall (x,y),\; i,\; t.
+\]
+
+Let the Euclidean distance between robots $i$ and $j$ at time $t$ be
+\[
+d_{ij,t} \;=\; \sqrt{(x_{i,t}-x_{j,t})^2 + (y_{i,t}-y_{j,t})^2}.
+\]
+We define a \emph{distance-weighted link quality} $W_{ij,t}\in[0,1]$ that is inversely proportional to distance.
+\[
+W_{ij,t} \;=\; 
+\begin{cases}
+\dfrac{1}{1+d_{ij,t}}, & d_{ij,t}\le R_c \\[6pt]
+0, & d_{ij,t} > R_c
+\end{cases}
+\]
+(which preserves ``inverse with distance'' while ignoring very distant pairs.)
+
+\subsection*{Objective Function}
+Maximize coverage and total distance-weighted connectivity across time:
+\[
+    \max\ f \;=\;
+    \underbrace{\alpha \sum_{x=1}^{n}\sum_{y=1}^{m} C_{x,y}}_{\text{coverage}}
+    \;+\;
+    \underbrace{\beta \sum_{t=0}^{K}\sum_{1\le i<j\le N} W_{ij,t}}_{\text{distance-weighted connectivity}},
+\]
+with weights $\alpha,\beta>0$.
+
+\subsection*{Constraints}
+\begin{enumerate}
+    \item \textbf{Map bounds:}
+    \[
+        1 \le x_{i,t} \le n, \qquad 1 \le y_{i,t} \le m, \qquad \forall i,\; t.
+    \]
+    \item \textbf{Motion (4-neighborhood + stay):}
+    \[
+        |x_{i,t}-x_{i,t-1}| + |y_{i,t}-y_{i,t-1}| \le 1, \qquad \forall i,\; t=1,\dots,K.
+    \]
+    \item \textbf{Obstacle avoidance (online knowledge):}
+    \[
+        p_{i,t} \notin O_t, \qquad \forall i,\; t, 
+        \qquad \text{with}\quad O_t \subseteq O_{t+1}.
+    \]
+    \item \textbf{Collision avoidance:}
+    \[
+        (x_{i,t},y_{i,t}) \neq (x_{j,t},y_{j,t}), \qquad \forall i\neq j,\; t.
+    \]
+    \item \textbf{Coverage update:}
+    \[
+        C_{x,y} \;\ge\; \mathbf{1}!\big[(x_{i,t},y_{i,t})=(x,y)\big], \quad \forall (x,y),\; i,\; t.
+    \]
+\end{enumerate}
+
+\subsection*{Decision Variables}
+The optimization chooses the next $K$ positions for each robot:
+\[
+    \{\, p_{i,t}=(x_{i,t},y_{i,t}) \;|\; i=1,\dots,N,\; t=1,\dots,K \,\}.
+\]
