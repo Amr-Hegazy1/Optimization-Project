@@ -80,3 +80,91 @@ $x_{i,j}(t+1) = x_{i,j}(t) + V_{i,j}(t+1)$,
 where $\omega$ is the inertia weight, $p_\omega$ and $n_\omega$ are cognitive and social coefficients respectively.
 
 Kashyap \textit{et al.} applied a \textbf{hybrid LF-PSO optimization approach} that integrates Lévy Flight for exploration with PSO for repulsion-based coordination, updating robot positions and velocities iteratively in a decentralized manner to maximize coverage while adhering to constraints in unknown environments.
+
+
+Tadayon and Rahmani (2024) \cite{som_2024_particle} studied how to place relay nodes in cluster-based wireless sensor networks. The goal was to improve coverage, keep the network connected and reduce cost. The placement was shown as yes or no choices for each possible spot. The optimization had three goals which are using fewer relays, covering more sensor nodes and keeping a connection between the relays and the base station. They also put rules so every sensor connect to at least one relay, all relays connect to the base station, and the number of relays not pass a limit. To solve this, they used Particle Swarm Optimization (PSO), where each placement update step by step using the best result. The tests show PSO give better coverage and less energy use than Gravitational Search Algorithm (GSA) and random placement. They measure the results by coverage, connectivity, number of relays and energy efficiency, and prove PSO is effective way to plan networks.
+
+\subsection{Problem Formulation}
+
+%The problem aims to determine the optimal placement of relay nodes (RNs) in a cluster-based wireless sensor network (WSN) to achieve three goals: 
+%(1) minimize the number of RNs used, 
+%(2) maximize the coverage of sensor nodes (SNs), and 
+%(3) maximize the connectivity between RNs and the base station (BS).
+
+\subsubsection{Decision Variables}
+\begin{itemize}
+    \item $\delta_i = 
+    \begin{cases}
+        1, & \text{if position } p_i \text{ is selected for RN placement} \\
+        0, & \text{otherwise}
+    \end{cases}$
+    \item $\omega_i = 
+    \begin{cases}
+        1, & \text{if sensor node } s_i \text{ is covered by at least one RN} \\
+        0, & \text{otherwise}
+    \end{cases}$
+    \item $\phi_{ij} = 
+    \begin{cases}
+        1, & \text{if RN } r_j \text{ is within communication range of } r_i \\
+        0, & \text{otherwise}
+    \end{cases}$
+    \item $\alpha_i = 
+    \begin{cases}
+        1, & \text{if RN } r_i \text{ is within range of the BS} \\
+        0, & \text{otherwise}
+    \end{cases}$
+\end{itemize}
+
+\subsubsection{Objective Functions}
+The optimization problem includes three objectives that are combined into a weighted fitness function:
+
+\begin{enumerate}
+    \item \textbf{Minimize the number of RNs:}
+    \begin{equation}
+        F_1 = \frac{1}{M} \sum_{i=1}^{M} x_i
+    \end{equation}
+
+    \item \textbf{Maximize coverage of SNs:}
+    \begin{equation}
+        F_2 = \sum_{\forall s_i \in S} Cov(s_i)
+    \end{equation}
+    where $Cov(s_i)$ is the set of RNs within the communication range of $s_i$.
+
+    \item \textbf{Maximize connectivity among RNs:}
+    \begin{equation}
+        F_3 = \sum_{\forall r_i \in R} Con(r_i)
+    \end{equation}
+    where $Con(r_i)$ is the set of RNs within range and directed toward the BS.
+\end{enumerate}
+
+The overall fitness function is given as:
+\begin{equation}
+    \text{Maximize } Fitness = w_1 \times (1 - F_1) + w_2 \times F_2 + w_3 \times F_3
+\end{equation}
+where $\sum w_i = 1$ and $0 \leq w_i \leq 1$ for $i = 1,2,3$.
+
+\subsubsection{Constraints}
+\begin{align}
+    &\omega_n = 1, \quad \forall n, 1 \leq n \leq N \quad &\text{(each SN must be covered)} \\
+    &\sum_{j=1}^{Z} (\phi_{ij} \times \delta_j + \alpha_i) \times \delta_i \geq 1, \quad \forall i, 1 \leq i \leq Z \quad &\text{(each RN must connect to BS)} \\
+    &\delta_i, \alpha_i, \phi_{ij} \in \{0,1\} \quad &\text{(binary decision variables)}
+\end{align}
+
+\subsubsection{Optimization Algorithm}
+The authors employed the \textbf{Particle Swarm Optimization (PSO)} algorithm to solve the problem. 
+In this approach:
+\begin{itemize}
+    \item Each particle represents a possible RN placement solution.
+    \item The particle’s velocity and position are updated iteratively using:
+        \begin{align}
+            V_i^{t+1} &= \omega V_i^t + c_1 r_1 (P_{best,i} - P_i^t) + c_2 r_2 (G_{best} - P_i^t) \\
+            P_i^{t+1} &= P_i^t + V_i^{t+1}
+        \end{align}
+    \item The global best ($G_{best}$) represents the best RN placement found so far.
+\end{itemize}
+
+PSO effectively balances exploration and exploitation, optimizing relay node placement to improve network coverage, connectivity, and energy efficiency.
+
+
+\end{document}
+
