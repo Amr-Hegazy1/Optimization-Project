@@ -2,6 +2,30 @@
 
 \section*{Problem Formulation}
 
+\begin{figure}[H]
+    \centering
+    \begin{tikzpicture}[
+        auto,
+        block/.style={rectangle, draw, fill=blue!20, text width=6em, text centered, rounded corners, minimum height=4em},
+        line/.style={draw, -latex'}
+    ]
+        % Nodes
+        \node[block, text width=8em] (inputs) {Inputs\\- Grid Map\\- Robot States\\- Parameters};
+        \node[block, right=2cm of inputs] (planner) {Path Planner (Optimizer)};
+        \node[block, above=1cm of planner, text width=10em] (objective) {Objective Function\\- Coverage\\- Connectivity\\- Penalties};
+        \node[block, below=1cm of planner, text width=8em] (constraints) {Constraints\\- Map Bounds\\- Motion\\- Energy\\- Obstacles\\- Collisions};
+        \node[block, right=2cm of planner] (outputs) {Optimal Trajectories};
+
+        % Arrows
+        \path [line] (inputs) -- (planner);
+        \path [line] (objective) -- (planner);
+        \path [line] (constraints) -- (planner);
+        \path [line] (planner) -- (outputs);
+    \end{tikzpicture}
+    \caption{High-level overview of the path planning optimization approach.}
+    \label{fig:optimization_overview}
+\end{figure}
+
 This chapter presents the mathematical formulation of the multi-robot exploration problem with distance-weighted connectivity constraints and energy limitations. We model the environment as a discrete grid and formulate the problem as a constrained optimization that balances area coverage with maintaining communication links between robots, while accounting for battery constraints and penalizing undesirable behaviors such as network disconnection and obstacle encounters.
 
 \subsection*{Assumptions}
