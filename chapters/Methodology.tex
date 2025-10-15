@@ -4,7 +4,7 @@
 \section*{Problem Formulation}
 
 \subsection*{Assumptions}
-The environment is a grid map $M \in \{0,1,2\}^{n \times m}$ with unit cells $1\times 1$; $M[x,y]=1$ means free, $0$ means obstacle, and 2 marks a robot's position.
+The environment is a grid map $M \in \{0,1,2,3\}^{n \times m}$ with unit cells $1\times 1$; $M[x,y]=0$ means unexplored cell, $1$ means free, $2$ means obstacle, and 3 marks a robot's position.
 Obstacles are unknown a priori. As robots explore, newly detected obstacles are shared; let $O_t$ be the set known by time $t$, with $O_t \subseteq O_{t+1}$.
 Robots are points that move synchronously at time steps $t=0,1,\dots,K$ (planning horizon $K$).
 Motion is 4-connected (up, down, left, right) or stay.
@@ -80,6 +80,13 @@ with weights $\alpha,\beta>0$.
     \item \textbf{Coverage update:}
     \[
         C_{x,y} \;\ge\; \mathbf{1}!\big[(x_{i,t},y_{i,t})=(x,y)\big], \quad \forall (x,y),\; i,\; t.
+    \]
+    \item \textbf{Connectivity:}
+    \[
+        E_t = \{(i,j) | (x_{i,t}, y_{i,t}) - (x_{j,t}, y_{j,t}) \leq d_{\text{threshold}}\}, \quad \forall t
+    \]
+    \[
+        \exists \text{ path in } G_t = (V, E_t) \text{ between any nodes } i, j, \quad \forall i \neq j, \, \forall t = 1, \ldots, K
     \]
 \end{enumerate}
 

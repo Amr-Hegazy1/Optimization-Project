@@ -119,5 +119,53 @@ The problem is subject to several \textbf{constraints} :
 
 Som \textit{et al.} applied \textbf{Particle Swarm Optimization (PSO)} to solve this constrained multi-objective problem, where each particle encodes a candidate relay placement configuration. The PSO algorithm iteratively updates particle velocities and positions guided by personal and global best solutions, refining placements through a balance of exploration and exploitation. Simulation results across two network scenarios demonstrated that PSO selected fewer relay nodes than the Gravitational Search Algorithm while maintaining complete coverage and connectivity, validating its effectiveness for communication-aware relay node deployment.
 
-\end{document}
+Finally, Huang \textit{et al.} (2020) \cite{9207908} addressed a critical gap in multi-robot coverage path planning (MCPP) research by proposing an algorithm specifically designed for outdoor environments with multiple land cover types. This work builds upon and extends existing MCPP methodologies to account for environmental variation, that was overlooked in prior research.
 
+The \textbf{problem is formulated} as maximizing the coverage of a rectangular area $D$ representing the search and rescue region, and $s$ robots $\mathcal{R} = \{R_1, R_2, \ldots, R_s\}$ with initial positions $\mathcal{S}_p = \{S_{p_1}, S_{p_2}, \ldots, S_{p_s}\}$. The environment contains multiple land cover types $C_v$ (e.g., farm, road, grass, wood, bare land, Gobi). Each land cover affect the robot performance:
+\begin{itemize}
+    \item Visual field $Fd_{C_{v_i}}$ : the detection range perpendicular to movement direction
+    \item Moving speed $Sd_{i,r,c}$ : the velocity when traversing cell $C_{i,r,c}$
+\end{itemize} 
+To accommodate these varying capabilities, we decompose the task area using a hierarchical quadtree structure with $l$ layers, where:
+\begin{equation}
+    l = 1 + \log_2\left(\frac{Fd_{\max}}{Fd_{\min}}\right)
+\end{equation}
+The quadtree construction follows a two-phase process:
+
+\textbf{Phase 1: Top-down decomposition.} Starting from the top layer with cell size $Sc_1 = 2 \times Fd_{\max}$, each subsequent layer $i$ has cells of size $Sc_i = Sc_{i-1}/2$, creating cells $C_{i,r,c}$ at all layers.
+
+\textbf{Phase 2: Bottom-up integration.} To eliminate redundant coverage, cells are classified as either \textit{active} (assigned a land cover type) or \textit{auxiliary} (set to null). Starting from the bottom layer $l$:
+\begin{itemize}
+    \item Each cell $C_{l,r,c}$ is assigned the dominant land cover type within its boundaries
+    \item For layers $i = l-1$ to 1: If four child cells share the same non-null cover type AND their size is smaller than the robot's visual field in that terrain, they are integrated upward by:
+    \begin{align}
+        C_{v_{i,r,c}} &= C_{v_{i+1,r*2,c*2}} \text{ (parent inherits type)}\\
+        C_{v_{i+1,r*2,c*2}} &= C_{v_{i+1,r*2+1,c*2}} = \cdots = \text{null} \text{ (children deactivated)}
+    \end{align}
+\end{itemize}
+This ensures all active cells $\mathcal{C}_{\text{active}} = \{C_{i,r,c} : C_{v_{i,r,c}} \neq \text{null}\}$ cover $D$ exactly once, adapting cell sizes to local terrain complexity.
+To enable efficient task assignment, we establish adjacency relationships using shared neighbor directions $Dn_{i,r,c} \in \{0,1,\ldots,15\}$ encoded in binary, where each bit represents a cardinal direction. For cells in different layers, shared neighbors are identified through logical AND operations on direction values.
+
+The \textbf{decision variables} include :
+\begin{itemize}
+    \item $A_j$: Area assigned to robot $R_j$
+    \item $P_j$: Coverage path for robot $R_j$
+\end{itemize}
+
+The \textbf{objective function} minimizes the maximum task cost across all robots:
+\begin{equation}
+    \min \max_{j \in [1,s]}\{T_j\}
+\end{equation}
+where the task cost $Qa_j$ for robot $R_j$ is:
+\begin{equation}
+    Qa_j = \sum_{C_{i,r,c} \in A_j} \frac{2Sc_i}{Sd_{i,r,c}}
+\end{equation}
+
+The problem is subject to several \textbf{constraints}:
+\begin{align}
+    &\bigcup_{j=1}^{s} A_j = D \quad \text{(Complete coverage)}\\
+    &A_j \cap A_k = \emptyset, \quad \forall j,k \in [1,s], j \neq k \quad \text{(No overlap)}\\
+    &|T_1| \approx |T_2| \approx \cdots \approx |T_s| \quad \text{(Balanced workload)}\\
+    &St_j \text{ is connected}, \quad \forall j \in [1,s] \quad \text{(Continuous)}\\
+    &S_{p_j} \in A_j, \quad \forall j \in [1,s] \quad \text{(Initial position)}
+\end{align}
