@@ -79,7 +79,7 @@ def get_signal_cost(path_at_last_index):
     return cost
 
 
-def cost_function(path_array):  # [[(0,1),(0,2)], [(1,2),(0,2)]]
+def cost_function(path_array, visualize=False):  # [[(0,1),(0,2)], [(1,2),(0,2)]]
     """
         path_array: 2D list or numpy array of size R x K that contains all paths generated for one iteration
 
@@ -140,12 +140,59 @@ def cost_function(path_array):  # [[(0,1),(0,2)], [(1,2),(0,2)]]
         if check_signal_connection(path_at_index) is False:
             return -100
 
+    # Visualize if requested
+    if visualize:
+        visualize_coverage(visited_unexplored, path_array)
+
     cost = COVERAGE_WEIGHT * len(visited_unexplored) + SIGNAL_STRENGTH_WEIGHT * get_signal_cost(path_at_last_index)
     return cost
 
+
+def visualize_coverage(visited_unexplored, path_array):
+    """Visualize the coverage map with visited cells and robot positions"""
+    print("Visualizing Coverage Map...")
+    # Get final positions (only if they're valid/visited)
+    final_pos = {}
+    for r in range(R):
+        final_position = tuple(path_array[r][-1])
+        if final_position in visited_unexplored:
+            final_pos[final_position] = r + 1
+        else:
+            print(f"Robot {r+1} final position {final_position} is not in visited unexplored cells.")
+    
+    print("\n" + "="*50)
+    print(f"Coverage Map ({N}x{M})")
+    print("="*50)
+    
+    # Print column indices
+    print("   ", end="")
+    for j in range(M):
+        print(f"{j:2}", end=" ")
+    print()
+    
+    # Print grid with row indices
+    for i in range(N):
+        print(f"{i:2} ", end="")
+        for j in range(M):
+            if (i, j) in final_pos:
+                print(f"R{final_pos[(i, j)]}", end=" ")
+            elif (i, j) in visited_unexplored:
+                print(" *", end=" ")
+            else:
+                print(" .", end=" ")
+        print()
+    
+    # Print stats
+    print("="*50)
+    print(f"Cells explored: {len(visited_unexplored)}/{N*M} ({len(visited_unexplored)*100/(N*M):.1f}%)")
+    print("="*50 + "\n")
+    
 
 if __name__ == "__main__":
     # create random positions of robots
     # create dummy solution
     path_array = create_dummy_solution()
-    print(cost_function(path_array))
+    
+    # Calculate cost with visualization (if needed)
+    print(f"Cost: {cost_function(path_array, visualize=True)}")
+
