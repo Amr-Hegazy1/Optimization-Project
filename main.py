@@ -1,19 +1,20 @@
 import numpy as np
 import math
+import random
 from collections import deque
 
 # Map dimensions
-N, M = 10, 20
+N, M = 20, 20
 
 # Robot configuration
-ROBOTS_POSITIONS = [(0, 0), (0, 1)]
+ROBOTS_POSITIONS = [(5, 0), (0, 5), (0, 15), (5,19)]
 R = len(ROBOTS_POSITIONS)
-K = 5  # Number of steps in the generated path
+K = 110  # Number of steps in the generated path
 
 # Energy and communication parameters
-ENERGY_BUDGET = 50  # ℓ: maximum cells each robot can traverse
-COMMUNICATION_RADIUS = 10.0  # R_c: communication radius threshold
-CONNECTIVITY_THRESHOLD = 10.0  # d_threshold: for determining if edge exists
+ENERGY_BUDGET = 100  # ℓ: maximum cells each robot can traverse
+COMMUNICATION_RADIUS = 15.0  # R_c: communication radius threshold
+CONNECTIVITY_THRESHOLD = 15.0  # d_threshold: for determining if edge exists
 
 # Objective function weights
 ALPHA = 1.0  # Coverage weight
@@ -24,22 +25,95 @@ ZETA = 5.0   # Obstacle encounter penalty weight
 # Map initialization (0=unexplored, 1=free, 2=obstacle, 3=robot)
 Map = np.zeros((N, M))
 
+MOVES = [(-1, 0), (1, 0), (0, -1), (0, 1), (0, 0)]  # Up, down, left, right, stay
+
+def movements_to_positions(movements_array, initial_positions):
+    """Convert from movement arrays [-> , <- ,..etc] to position paths [(x,y),..]."""
+    R = len(initial_positions) # number of robots
+    K = len(movements_array[0]) # number of steps
+    path_array = []
+
+    for r in range(R):
+        x, y = initial_positions[r]
+        robot_path = []
+        for move_idx in movements_array[r]:
+            dx, dy = MOVES[move_idx]
+            x, y = x + dx, y + dy
+            # Ensure within map bounds
+            x = max(0, min(N - 1, x))
+            y = max(0, min(M - 1, y))
+            robot_path.append((x, y))
+        path_array.append(robot_path)
+
+    return np.array(path_array, dtype=object)
+
+
+def positions_to_movements(path_array, initial_positions):
+    """Convert from position paths [(x,y),..] to movement arrays [-> , <- ,..etc]."""
+    movements_array = []
+    for r, path in enumerate(path_array):
+        x_prev, y_prev = initial_positions[r] 
+        robot_moves = []
+        for (x, y) in path:
+            dx, dy = x - x_prev, y - y_prev
+            move_idx = MOVES.index((dx, dy)) if (dx, dy) in MOVES else 4  # stay in place if move is invalid
+            robot_moves.append(move_idx)
+            x_prev, y_prev = x, y
+        movements_array.append(robot_moves)
+    return np.array(movements_array, dtype=object)
+
+def create_initial_random_path(max_attempts=1000):
+    """
+    Create a random, feasible path for each robot.
+    Keeps trying until a path is found or max_attempts is reached.
+    """
+    attempt = 0
+    while attempt < max_attempts:
+        attempt += 1
+        path_array = []
+        for start_x, start_y in ROBOTS_POSITIONS:
+            robot_path = []
+            x, y = start_x, start_y
+            for _ in range(K):
+                valid_moves = []
+                # Generate list of valid moves within map bounds
+                for move in [(-1, 0), (1, 0), (0, -1), (0, 1), (0, 0)]:
+                    nx, ny = x + move[0], y + move[1]
+                    if 0 <= nx < N and 0 <= ny < M:
+                        valid_moves.append(move)
+
+                # Randomly select a valid move
+                move = random.choice(valid_moves)
+                x += move[0]
+                y += move[1]
+                robot_path.append((x, y))
+
+            path_array.append(robot_path)
+
+        path_array = np.array(path_array, dtype=object)
+
+        # Check if the generated path is feasible
+        if is_feasible(path_array):
+            print(f"Found feasible initial path after {attempt} attempt(s).")
+            return path_array
+
+    # If no feasible path found after max_attempts
+    print("Warning: No feasible initial path found after many attempts. Returning last attempt.")
+    return path_array
+
 
 def create_dummy_solution():
     """
     Returns a dummy path for each robot.
     """
-    path_array = [[(1,0),(2,0),(3,0),(4,0),(5,0)],
-                  [(0,1),(0,2),(0,3),(0,4),(0,5)]]
+    path_array = create_initial_random_path()
     return np.array(path_array, dtype=object)
-
 
 def valid_move(p1, p2):
     """Check if p2 is the same cell or one of 4-connected adjacent cells."""
     dx = abs(p1[0] - p2[0])
     dy = abs(p1[1] - p2[1])
     return (dx + dy <= 1)
-
 
 def euclidean_distance(p1, p2):
     """Calculate Euclidean distance between two points."""
@@ -269,7 +343,7 @@ def cost_function(path_array, visualize=False):
     
     # Compute total objective
     objective = (coverage_term + connectivity_term - 
-                 disconnection_penalty - obstacle_penalty)
+                disconnection_penalty - obstacle_penalty)
     
     # Visualize if requested
     if visualize:
@@ -323,17 +397,22 @@ def visualize_coverage(visited_unexplored, path_array):
     print(f"Cells explored: {len(visited_unexplored)}/{N*M} ({len(visited_unexplored)*100/(N*M):.1f}%)")
     print(f"R* = Final robot position, * = Explored, # = Obstacle, . = Unexplored")
     print("="*50 + "\n")
-    
+
 
 if __name__ == "__main__":
-    # Create dummy solution
-    path_array = create_dummy_solution()
-    print("Solution:")
-    print(path_array)
-    
-    # Check feasibility
-    print(f"Is solution feasible? {is_feasible(path_array)}")
-    
-    # Calculate cost with visualization
-    cost = cost_function(path_array, visualize=True)
-    print(f"\nFinal Cost: {cost:.2f}")
+    # keep here to avoid circular imports
+    from simulated_annealing import SimulatedAnnealing
+
+    # Generate initial feasible path and convert it to movements
+    initial_path = create_dummy_solution()
+    initial_movements = positions_to_movements(initial_path, ROBOTS_POSITIONS)
+
+    # Run Simulated Annealing Optimization
+    sa = SimulatedAnnealing()
+    best_movements, best_cost = sa.run(initial_movements)
+
+    # Convert best movements back to path and visualize
+    best_path = movements_to_positions(best_movements, ROBOTS_POSITIONS)
+    print("\nBest path found:")
+    cost_function(best_path, visualize=True)
+    print(f"\nBest Cost: {best_cost:.2f}")
