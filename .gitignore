@@ -29,3 +29,7 @@
 *.mtc*
 _minted*
 
+.venv
+
+__pycache__
+

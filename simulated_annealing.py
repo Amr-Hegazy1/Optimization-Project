@@ -9,11 +9,12 @@ from main import (
 )
 
 class SimulatedAnnealing:
-    def __init__(self, initial_temperature=100.0, cooling_rate=0.995, min_temperature=0.5, max_iterations=5000):
+    def __init__(self, initial_temperature=100.0, cooling_rate=0.995, min_temperature=0.5, max_iterations=5000, visualizer=None):
         self.initial_temperature = initial_temperature 
         self.cooling_rate = cooling_rate
         self.min_temperature = min_temperature
         self.max_iterations = max_iterations
+        self.visualizer = visualizer  # Optional visualization object
 
     def generate_neighbor(self, movements_array, max_retries=20):
         """
@@ -54,7 +55,7 @@ class SimulatedAnnealing:
         print(f"Initial cost: {current_cost:.2f}")
 
         while T > self.min_temperature and iteration < self.max_iterations:
-            new = self.generate_neighbor  (current)
+            new = self.generate_neighbor(current)
             new_path = movements_to_positions(new, ROBOTS_POSITIONS)
             new_cost = cost_function(new_path)
 
@@ -64,12 +65,25 @@ class SimulatedAnnealing:
                 if new_cost > best_cost:
                     best_movements, best_cost = new, new_cost
 
+            # Update visualization if available
+            if self.visualizer is not None:
+                best_path = movements_to_positions(best_movements, ROBOTS_POSITIONS)
+                current_path_viz = movements_to_positions(current, ROBOTS_POSITIONS)
+                self.visualizer.update_optimization(iteration, T, current_cost, best_cost, best_path, current_path_viz)
+                
+                # Wait for the visualization to finish animating before computing next iteration
+                self.visualizer.wait_for_animation_complete()
+
             # Cool down the temperature using geometric cooling schedule
             T *= self.cooling_rate
             iteration += 1
 
             if iteration % 10 == 0:
                 print(f"Iter {iteration:4d} | Temp: {T:6.3f} | Current: {current_cost:7.2f} | Best: {best_cost:7.2f}")
+
+        # Notify visualization that optimization is complete
+        if self.visualizer is not None:
+            self.visualizer.finish_optimization()
 
         print("\n--- Optimization Complete ---")
         print(f"Best cost found: {best_cost:.2f}")

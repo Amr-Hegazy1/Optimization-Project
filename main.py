@@ -402,17 +402,54 @@ def visualize_coverage(visited_unexplored, path_array):
 if __name__ == "__main__":
     # keep here to avoid circular imports
     from simulated_annealing import SimulatedAnnealing
+    from visualization import OptimizationVisualizer
+    import threading
 
+    print("\n" + "="*70)
+    print("  MULTI-ROBOT PATH PLANNING - SIMULATED ANNEALING OPTIMIZATION")
+    print("="*70)
+    
+    # Create visualization window
+    print("\nInitializing visualization...")
+    viz = OptimizationVisualizer(
+        initial_positions=ROBOTS_POSITIONS,
+        map_grid=Map,
+        communication_radius=COMMUNICATION_RADIUS,
+        connectivity_threshold=CONNECTIVITY_THRESHOLD,
+        alpha=ALPHA,
+        beta=BETA,
+        gamma=GAMMA,
+        zeta=ZETA,
+        visualization_step_size=10  # Can be changed to skip frames (e.g., 2, 5, 10)
+    )
+    
     # Generate initial feasible path and convert it to movements
+    print("Generating initial feasible solution...")
     initial_path = create_dummy_solution()
     initial_movements = positions_to_movements(initial_path, ROBOTS_POSITIONS)
-
-    # Run Simulated Annealing Optimization
-    sa = SimulatedAnnealing()
-    best_movements, best_cost = sa.run(initial_movements)
-
-    # Convert best movements back to path and visualize
-    best_path = movements_to_positions(best_movements, ROBOTS_POSITIONS)
-    print("\nBest path found:")
-    cost_function(best_path, visualize=True)
-    print(f"\nBest Cost: {best_cost:.2f}")
+    
+    # Run optimization in a separate thread so GUI remains responsive
+    def run_optimization():
+        # Run Simulated Annealing Optimization with visualization
+        sa = SimulatedAnnealing(visualizer=viz)
+        best_movements, best_cost = sa.run(initial_movements)
+        
+        # Convert best movements back to path
+        best_path = movements_to_positions(best_movements, ROBOTS_POSITIONS)
+        
+        # Display final results in console
+        print("\n" + "="*70)
+        print("FINAL RESULTS")
+        print("="*70)
+        cost_function(best_path, visualize=True)
+        print(f"\nFinal Best Cost: {best_cost:.2f}")
+        print("="*70)
+    
+    # Start optimization in background thread
+    print("Starting optimization...")
+    print("Watch the real-time visualization window!\n")
+    opt_thread = threading.Thread(target=run_optimization, daemon=True)
+    opt_thread.start()
+    
+    # Show visualization (this blocks until window is closed)
+    viz.show()
