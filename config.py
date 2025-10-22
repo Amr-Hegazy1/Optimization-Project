@@ -21,7 +21,7 @@ ROBOT_INITIAL_POSITIONS = [
 ]
 
 # Path length (number of steps)
-PATH_LENGTH = 110
+PATH_LENGTH = 130
 
 
 # ============================================================================
@@ -44,15 +44,15 @@ CONNECTIVITY_THRESHOLD = 15.0
 
 # Coverage weight (higher = prioritize exploration)
 # Used as: α / Coverage
-ALPHA = 1.0
+ALPHA = 300 
 
 # Connectivity weight (higher = prioritize staying connected)
 # Used as: β / Connectivity
-BETA = 0.5
+BETA = 100 
 
 # Disconnection penalty weight (higher = stronger penalty for network splits)
 # Used as: γ * P_disconnect
-GAMMA = 2.0
+GAMMA = 4.0 
 
 # Note: Obstacle avoidance is handled by hard constraints in is_feasible()
 # ZETA parameter has been removed as obstacles are now strictly forbidden
@@ -63,16 +63,18 @@ GAMMA = 2.0
 # ============================================================================
 
 # Initial temperature for SA
-SA_INITIAL_TEMPERATURE = 100.0
+SA_INITIAL_TEMPERATURE = 10.0 # to explore more at the start
 
 # Cooling rate (0 < rate < 1, closer to 1 = slower cooling)
-SA_COOLING_RATE = 0.995
+SA_COOLING_RATE = 0.995 
 
 # Minimum temperature threshold for stopping
-SA_MIN_TEMPERATURE = 0.5
+SA_MIN_TEMPERATURE = 0.1 
 
 # Maximum number of iterations
 SA_MAX_ITERATIONS = 5000
+
+
 
 
 # ============================================================================
@@ -80,7 +82,7 @@ SA_MAX_ITERATIONS = 5000
 # ============================================================================
 
 # Animation step size (1 = show every step, higher = skip frames for faster animation)
-VISUALIZATION_STEP_SIZE = 1
+VISUALIZATION_STEP_SIZE = 1000
 
 # Initial animation speed in milliseconds per frame
 ANIMATION_SPEED_MS = 50

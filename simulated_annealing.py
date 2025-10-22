@@ -18,8 +18,8 @@ class SimulatedAnnealing(BaseOptimizer):
     accepting worse solutions with a temperature-dependent probability.
     """
     
-    def __init__(self, initial_temperature=100.0, cooling_rate=0.995, 
-                 min_temperature=0.5, max_iterations=5000, visualizer=None):
+    def __init__(self, initial_temperature=10.0, cooling_rate=0.995, 
+                min_temperature=0.1, max_iterations=5000, visualizer=None):
         """
         Initialize Simulated Annealing optimizer.
         
@@ -36,7 +36,7 @@ class SimulatedAnnealing(BaseOptimizer):
         self.min_temperature = min_temperature
         self.current_temperature = initial_temperature
 
-    def generate_neighbor(self, movements_array, max_retries=20):
+    def generate_neighbor(self, movements_array, max_retries=100):
         """
         Generate a neighboring solution by randomly modifying movements.
         
@@ -55,7 +55,7 @@ class SimulatedAnnealing(BaseOptimizer):
 
             for r in range(len(new_movements)):
                 # Randomly modify up to 10 movements for robot r
-                for _ in range(10):
+                for _ in range(15):
                     idx = random.randint(0, K - 1)
                     new_movements[r][idx] = random.randint(0, 4)
 
@@ -148,6 +148,11 @@ class SimulatedAnnealing(BaseOptimizer):
 
             # Cool down the temperature using geometric cooling schedule
             T *= self.cooling_rate
+            
+            # Cool down the temperature using linear cooling schedule
+            #delta_T = (self.initial_temperature - self.min_temperature) / self.max_iterations
+            #T = max(self.min_temperature, T - delta_T)
+            
             self.current_temperature = T
             iteration += 1
             self.current_iteration = iteration
