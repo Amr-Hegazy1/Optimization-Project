@@ -33,7 +33,7 @@ class BaseVisualizer(ABC):
     
     def __init__(self, initial_positions, map_grid, 
                  communication_radius, connectivity_threshold,
-                 alpha, beta, gamma, zeta, visualization_step_size=1):
+                 alpha, beta, gamma, visualization_step_size=1):
         """
         Initialize the base visualizer.
         
@@ -42,7 +42,7 @@ class BaseVisualizer(ABC):
             map_grid: 2D numpy array representing the map
             communication_radius: R_c for connectivity
             connectivity_threshold: threshold for network connectivity
-            alpha, beta, gamma, zeta: objective function weights
+            alpha, beta, gamma: objective function weights
             visualization_step_size: steps to skip in animation (default: 1)
         """
         self.initial_positions = initial_positions
@@ -52,7 +52,6 @@ class BaseVisualizer(ABC):
         self.alpha = alpha
         self.beta = beta
         self.gamma = gamma
-        self.zeta = zeta
         self.visualization_step_size = visualization_step_size
         
         self.R = len(initial_positions)  # Number of robots

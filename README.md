@@ -125,7 +125,4 @@ class GeneticAlgorithm(BaseOptimizer):
 
 The base classes handle visualization integration, state tracking, and common functionality.
 
----
 
-**Author**: Amr Hegazy  
-**Institution**: German University in Cairo (GUC)

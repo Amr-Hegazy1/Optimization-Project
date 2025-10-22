@@ -19,7 +19,7 @@ CONNECTIVITY_THRESHOLD = config.CONNECTIVITY_THRESHOLD
 ALPHA = config.ALPHA
 BETA = config.BETA
 GAMMA = config.GAMMA
-ZETA = config.ZETA
+# Note: ZETA removed - obstacles handled by hard constraints
 
 # Map initialization (0=unexplored, 1=free, 2=obstacle, 3=robot)
 Map = np.zeros((N, M))
@@ -302,18 +302,21 @@ def is_feasible(path_array):
 
 def cost_function(path_array, visualize=False):
     """
-    Compute the objective function value for a given path array.
+    Compute the cost function value for a given path array.
     
-    Objective: f = α * Coverage + β * Connectivity - γ * P_disconnect - ζ * P_obstacle
+    For minimization (SA standard): 
+    Cost = (α / Coverage) + (β / Connectivity) + (γ * P_disconnect)
     
-    Returns: objective value if feasible, -1 if infeasible
+    Note: Obstacles are handled by hard constraints in is_feasible()
+    
+    Returns: cost value (lower is better) if feasible, float('inf') if infeasible
     """
     
-    # First check feasibility
+    # First check feasibility (includes obstacle avoidance)
     if not is_feasible(path_array):
-        return -1
+        return float('inf')  # Infeasible solutions have infinite cost
     
-    # 1. Coverage term: α * Σ C_{x,y}
+    # 1. Coverage term: count of visited unexplored cells
     visited_unexplored = set()
     for r in range(R):
         for t in range(K):
@@ -321,40 +324,45 @@ def cost_function(path_array, visualize=False):
             if Map[x, y] == 0:  # Unexplored cell
                 visited_unexplored.add((x, y))
     
-    coverage_term = ALPHA * len(visited_unexplored)
+    coverage_count = len(visited_unexplored)
     
-    # 2. Distance-weighted connectivity term: β * Σ_t Σ_i Σ_j W_{ij,t}
-    connectivity_term = 0.0
+    # 2. Distance-weighted connectivity: Σ_t Σ_i Σ_j W_{ij,t}
+    connectivity_sum = 0.0
     for t in range(K):
         positions_t = [path_array[i][t] for i in range(R)]
         for i in range(R):
             for j in range(i + 1, R):
                 dist = euclidean_distance(positions_t[i], positions_t[j])
-                connectivity_term += compute_link_weight(dist, COMMUNICATION_RADIUS)
+                connectivity_sum += compute_link_weight(dist, COMMUNICATION_RADIUS)
     
-    connectivity_term *= BETA
+    # 3. Disconnection penalty: P_disconnect
+    disconnection_penalty = compute_disconnection_penalty(path_array)
     
-    # 3. Disconnection penalty: γ * P_disconnect
-    disconnection_penalty = GAMMA * compute_disconnection_penalty(path_array)
+    # Compute cost: (α / Coverage) + (β / Connectivity) + (γ * P_disconnect)
+    # Add small epsilon to avoid division by zero
+    epsilon = 1e-6
     
-    # 4. Obstacle encounter penalty: ζ * P_obstacle
-    obstacle_penalty = ZETA * compute_obstacle_penalty(path_array)
+    coverage_cost = ALPHA / (coverage_count + epsilon)
+    connectivity_cost = BETA / (connectivity_sum + epsilon)
+    disconnection_cost = GAMMA * disconnection_penalty
     
-    # Compute total objective
-    objective = (coverage_term + connectivity_term - 
-                disconnection_penalty - obstacle_penalty)
+    cost = coverage_cost + connectivity_cost + disconnection_cost
     
     # Visualize if requested
     if visualize:
         visualize_coverage(visited_unexplored, path_array)
-        print(f"\nObjective Breakdown:")
-        print(f"  Coverage term (α={ALPHA}): {coverage_term:.2f}")
-        print(f"  Connectivity term (β={BETA}): {connectivity_term:.2f}")
-        print(f"  Disconnection penalty (γ={GAMMA}): {disconnection_penalty:.2f}")
-        print(f"  Obstacle penalty (ζ={ZETA}): {obstacle_penalty:.2f}")
-        print(f"  Total objective: {objective:.2f}")
+        print(f"\nCost Breakdown (lower is better):")
+        print(f"  Coverage count: {coverage_count}")
+        print(f"  Connectivity sum: {connectivity_sum:.2f}")
+        print(f"  Disconnection penalty: {disconnection_penalty:.2f}")
+        print(f"  ---")
+        print(f"  Coverage cost (α/{coverage_count}): {coverage_cost:.6f}")
+        print(f"  Connectivity cost (β/{connectivity_sum:.2f}): {connectivity_cost:.6f}")
+        print(f"  Disconnection cost (γ*{disconnection_penalty:.2f}): {disconnection_cost:.6f}")
+        print(f"  ---")
+        print(f"  Total Cost: {cost:.6f}")
     
-    return objective
+    return cost
 
 
 def visualize_coverage(visited_unexplored, path_array):
@@ -426,7 +434,6 @@ if __name__ == "__main__":
         alpha=ALPHA,
         beta=BETA,
         gamma=GAMMA,
-        zeta=ZETA,
         visualization_step_size=config.VISUALIZATION_STEP_SIZE
     )
     
@@ -455,7 +462,7 @@ if __name__ == "__main__":
         print("FINAL RESULTS")
         print("="*70)
         cost_function(best_path, visualize=True)
-        print(f"\nFinal Best Cost: {best_cost:.2f}")
+        print(f"\nFinal Best Cost (lower is better): {best_cost:.6f}")
         print("="*70)
     
     # Start optimization in background thread

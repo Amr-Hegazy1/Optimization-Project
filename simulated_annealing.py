@@ -75,8 +75,8 @@ class SimulatedAnnealing(BaseOptimizer):
         Determine whether to accept a new solution using Metropolis criterion.
         
         Implementation of abstract method from BaseOptimizer.
-        Accepts improvements always, and accepts worse solutions with
-        probability exp((new_cost - current_cost) / T).
+        For MINIMIZATION: Accepts improvements always (new_cost < current_cost),
+        and accepts worse solutions with probability exp(-(new_cost - current_cost) / T).
         
         Args:
             current_cost (float): Cost of current solution
@@ -85,11 +85,11 @@ class SimulatedAnnealing(BaseOptimizer):
         Returns:
             bool: True if new solution should be accepted
         """
-        if new_cost > current_cost:
+        if new_cost < current_cost:  # Improvement (lower cost is better)
             return True
         else:
             # Probabilistic acceptance for worse solutions
-            acceptance_probability = np.exp((new_cost - current_cost) / self.current_temperature)
+            acceptance_probability = np.exp(-(new_cost - current_cost) / self.current_temperature)
             return random.random() < acceptance_probability
 
     def run(self, initial_movements):
@@ -97,6 +97,7 @@ class SimulatedAnnealing(BaseOptimizer):
         Perform simulated annealing optimization.
         
         Implementation of abstract method from BaseOptimizer.
+        Minimizes cost function (lower cost is better).
         
         Args:
             initial_movements: Initial movement array solution
@@ -116,8 +117,8 @@ class SimulatedAnnealing(BaseOptimizer):
         iteration = 0
         self.current_iteration = 0
 
-        print(f"\n--- Simulated Annealing ---")
-        print(f"Initial cost: {current_cost:.2f}")
+        print(f"\n--- Simulated Annealing (Minimization) ---")
+        print(f"Initial cost: {current_cost:.6f}")
 
         while T > self.min_temperature and iteration < self.max_iterations:
             new = self.generate_neighbor(current)
@@ -127,7 +128,7 @@ class SimulatedAnnealing(BaseOptimizer):
             # Use the acceptance criterion method
             if self.acceptance_criterion(current_cost, new_cost):
                 current, current_cost = new, new_cost
-                if new_cost > best_cost:
+                if new_cost < best_cost:  # Lower cost is better (minimization)
                     best_movements, best_cost = new, new_cost
                     self.best_solution = best_movements
                     self.best_cost = best_cost
@@ -152,13 +153,13 @@ class SimulatedAnnealing(BaseOptimizer):
             self.current_iteration = iteration
 
             if iteration % 10 == 0:
-                print(f"Iter {iteration:4d} | Temp: {T:6.3f} | Current: {current_cost:7.2f} | Best: {best_cost:7.2f}")
+                print(f"Iter {iteration:4d} | Temp: {T:6.3f} | Current: {current_cost:7.6f} | Best: {best_cost:7.6f}")
 
         # Notify visualization that optimization is complete using base class method
         self.finish_optimization()
 
         print("\n--- Optimization Complete ---")
-        print(f"Best cost found: {best_cost:.2f}")
+        print(f"Best cost found: {best_cost:.6f}")
         return best_movements, best_cost
     
     def get_hyperparameters(self):

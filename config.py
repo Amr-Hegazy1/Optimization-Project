@@ -43,16 +43,19 @@ CONNECTIVITY_THRESHOLD = 15.0
 # ============================================================================
 
 # Coverage weight (higher = prioritize exploration)
+# Used as: α / Coverage
 ALPHA = 1.0
 
 # Connectivity weight (higher = prioritize staying connected)
+# Used as: β / Connectivity
 BETA = 0.5
 
 # Disconnection penalty weight (higher = stronger penalty for network splits)
+# Used as: γ * P_disconnect
 GAMMA = 2.0
 
-# Obstacle encounter penalty weight (higher = stronger penalty for hitting obstacles)
-ZETA = 5.0
+# Note: Obstacle avoidance is handled by hard constraints in is_feasible()
+# ZETA parameter has been removed as obstacles are now strictly forbidden
 
 
 # ============================================================================

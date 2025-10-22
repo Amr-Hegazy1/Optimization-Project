@@ -29,7 +29,7 @@ class OptimizationVisualizer(BaseVisualizer):
     
     def __init__(self, initial_positions, map_grid, 
                  communication_radius, connectivity_threshold,
-                 alpha, beta, gamma, zeta, visualization_step_size=1):
+                 alpha, beta, gamma, visualization_step_size=1):
         """
         Initialize the SA optimization visualizer.
         
@@ -38,7 +38,7 @@ class OptimizationVisualizer(BaseVisualizer):
             map_grid: 2D numpy array representing the map
             communication_radius: R_c for connectivity
             connectivity_threshold: threshold for network connectivity
-            alpha, beta, gamma, zeta: objective function weights
+            alpha, beta, gamma: objective function weights
             visualization_step_size: number of steps to skip in animation (default: 1)
         """
         # SA-specific tracking
@@ -48,7 +48,7 @@ class OptimizationVisualizer(BaseVisualizer):
         
         # Call parent constructor (this will call _create_gui which calls _create_visualization_panel)
         super().__init__(initial_positions, map_grid, communication_radius, 
-                        connectivity_threshold, alpha, beta, gamma, zeta, 
+                        connectivity_threshold, alpha, beta, gamma, 
                         visualization_step_size)
         
         # Set animation speed from config if available
@@ -88,11 +88,11 @@ class OptimizationVisualizer(BaseVisualizer):
         self.ax_temp.set_ylabel('Temperature', fontsize=11)
         self.ax_temp.grid(True, alpha=0.3, linestyle='--')
         
-        # Bottom left: Objective function evolution
+        # Bottom left: Cost function evolution (minimization)
         self.ax_obj = self.fig.add_subplot(gs[1, 0])
-        self.ax_obj.set_title('Objective Function Evolution', fontsize=13, fontweight='bold', pad=10)
+        self.ax_obj.set_title('Cost Function Evolution (lower=better)', fontsize=13, fontweight='bold', pad=10)
         self.ax_obj.set_xlabel('Iteration', fontsize=11)
-        self.ax_obj.set_ylabel('Objective Value', fontsize=11)
+        self.ax_obj.set_ylabel('Cost Value', fontsize=11)
         self.ax_obj.grid(True, alpha=0.3, linestyle='--')
         
         # Use base class helper to create common map axes
@@ -189,24 +189,24 @@ class OptimizationVisualizer(BaseVisualizer):
             temp_line += f"  (start {self.initial_temperature:.2f})"
         stats_text.append(temp_line)
         stats_text.append("")
-        stats_text.append("OBJECTIVE VALUES")
+        stats_text.append("COST VALUES (lower=better)")
         if self.display_current_cost is not None:
-            stats_text.append(f"Current:   {self.display_current_cost:8.2f}")
+            stats_text.append(f"Current:   {self.display_current_cost:8.6f}")
         else:
             stats_text.append("Current:        --")
         if self.display_best_cost is not None:
-            stats_text.append(f"Best:      {self.display_best_cost:8.2f}")
+            stats_text.append(f"Best:      {self.display_best_cost:8.6f}")
         else:
             stats_text.append("Best:           --")
         
         if len(self.best_costs) > 1 and self.display_best_cost is not None:
             initial_cost = self.best_costs[0]
             current_best = self.display_best_cost
-            improvement = current_best - initial_cost
+            improvement = initial_cost - current_best  # For minimization: positive means improvement
             improvement_pct = (improvement / abs(initial_cost) * 100) if initial_cost != 0 else 0
             stats_text.append("")
             stats_text.append("IMPROVEMENT")
-            stats_text.append(f"Δ Value:   {improvement:+8.2f}")
+            stats_text.append(f"Δ Value:   {improvement:+8.6f}")
             stats_text.append(f"Δ Percent: {improvement_pct:+7.1f}%")
         
         if self.best_path is not None:
@@ -249,7 +249,7 @@ class OptimizationVisualizer(BaseVisualizer):
             status_text = (
                 f"{prefix} | Iteration: {self.display_iteration or self.iterations[-1]} | "
                 f"Temperature: {(self.display_temperature if self.display_temperature is not None else self.temperatures[-1]):.2f} | "
-                f"Best Cost: {(self.display_best_cost if self.display_best_cost is not None else self.best_costs[-1]):.2f}"
+                f"Best Cost: {(self.display_best_cost if self.display_best_cost is not None else self.best_costs[-1]):.6f}"
             )
             if final and final_coverage is not None:
                 status_text += f" | Final Coverage: {final_coverage:.1f}%"
@@ -271,7 +271,7 @@ class RobotPathVisualizer:
     
     def __init__(self, path_array, initial_positions, map_grid, 
                  communication_radius, connectivity_threshold,
-                 alpha, beta, gamma, zeta):
+                 alpha, beta, gamma):
         """
         Initialize the visualization.
         
@@ -281,7 +281,7 @@ class RobotPathVisualizer:
             map_grid: 2D numpy array representing the map
             communication_radius: R_c for connectivity
             connectivity_threshold: threshold for network connectivity
-            alpha, beta, gamma, zeta: objective function weights
+            alpha, beta, gamma: objective function weights
         """
         self.path_array = path_array
         self.initial_positions = initial_positions
@@ -291,7 +291,6 @@ class RobotPathVisualizer:
         self.alpha = alpha
         self.beta = beta
         self.gamma = gamma
-        self.zeta = zeta
         
         self.R = len(path_array)  # Number of robots
         self.K = len(path_array[0])  # Path length
@@ -520,9 +519,7 @@ class RobotPathVisualizer:
                                               text=f"Disconnection (γ={self.gamma}): 0.00")
         self.obj_disconnect_label.pack(anchor=tk.W, padx=15)
         
-        self.obj_obstacle_label = ttk.Label(metrics_frame, 
-                                            text=f"Obstacle (ζ={self.zeta}): 0.00")
-        self.obj_obstacle_label.pack(anchor=tk.W, padx=15)
+        # Note: Obstacle penalty removed - handled by hard constraints
         
         canvas.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
         scrollbar.pack(side=tk.RIGHT, fill=tk.Y)
@@ -748,7 +745,7 @@ class RobotPathVisualizer:
 
 def visualize_optimization_results(path_array, initial_positions, map_grid,
                                    communication_radius, connectivity_threshold,
-                                   alpha, beta, gamma, zeta):
+                                   alpha, beta, gamma):
     """
     Convenience function to create and show visualization.
     
@@ -758,7 +755,7 @@ def visualize_optimization_results(path_array, initial_positions, map_grid,
         map_grid: Environment map
         communication_radius: Communication range
         connectivity_threshold: Connectivity threshold
-        alpha, beta, gamma, zeta: Objective weights
+        alpha, beta, gamma: Objective weights
     """
     viz = RobotPathVisualizer(
         path_array=path_array,
@@ -768,8 +765,7 @@ def visualize_optimization_results(path_array, initial_positions, map_grid,
         connectivity_threshold=connectivity_threshold,
         alpha=alpha,
         beta=beta,
-        gamma=gamma,
-        zeta=zeta
+        gamma=gamma
     )
     viz.show()
     return viz

@@ -33,7 +33,7 @@ class BaseOptimizer(ABC):
         self.visualizer = visualizer
         self.current_iteration = 0
         self.best_solution = None
-        self.best_cost = -np.inf
+        self.best_cost = np.inf  # Initialize to infinity for minimization
         
     @abstractmethod
     def run(self, initial_solution):
