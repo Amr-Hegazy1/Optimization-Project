@@ -1,218 +1,131 @@
-# Multi-Robot Path Planning Simulation
+# Multi-Robot Path Planning Optimization
 
-This project implements a multi-robot path planning optimization system using Simulated Annealing. It includes a professional GUI visualization tool for analyzing robot paths, coverage, and network connectivity.
+Multi-robot path planning system using metaheuristic optimization. The system coordinates multiple robots to explore an environment while maintaining network connectivity and avoiding obstacles.
 
 ## Features
 
-- **Multi-Robot Path Planning**: Coordinate multiple robots to explore an environment
-- **Simulated Annealing Optimization**: Find near-optimal paths using SA algorithm
-- **Interactive GUI Visualization**: Professional, animated visualization of results
-- **Comprehensive Metrics**: Coverage, connectivity, and performance statistics
-- **Constraint Handling**: Energy budget, obstacle avoidance, collision detection
+- **Simulated Annealing Optimization**: Iterative improvement using probabilistic acceptance
+- **Real-time Visualization**: Animated GUI showing robot paths, coverage, and connectivity
+- **Extensible Architecture**: Easy to add new optimization algorithms (GA, PSO, etc.)
+- **Constraint Handling**: Energy budget, obstacle avoidance, network connectivity
+- **Performance Metrics**: Coverage analysis, connectivity tracking, objective function evolution
 
-## Installation
-
-### Prerequisites
+## Quick Start
 
 ```bash
+# Install dependencies
 pip install numpy matplotlib
-```
 
-### Optional Dependencies
-
-For advanced features:
-```bash
-pip install scipy  # For additional optimization methods
-```
-
-## Running the Simulation
-
-To run the complete optimization with visualization:
-
-```bash
+# Run optimization
 python main.py
 ```
 
-### What Happens
+The GUI will show real-time optimization progress with animated robot paths.
 
-1. **Initial Path Generation**: Creates a random, feasible initial path for all robots
-2. **Simulated Annealing**: Optimizes the paths over multiple iterations
-3. **Console Visualization**: Displays text-based coverage map and statistics
-4. **GUI Launch**: Opens interactive visualization window with:
-   - Animated robot movement
-   - Real-time coverage and connectivity charts
-   - Detailed performance metrics
-   - Playback controls
+## Configuration
 
-### Visualization Controls
+All parameters are centralized in `config.py` for easy customization:
 
-- **Play/Pause/Reset**: Control animation playback
-- **Speed Slider**: Adjust animation speed (10-200 ms/frame)
-- **Zoom/Pan**: Use matplotlib toolbar for detailed inspection
-- **Statistics Panel**: View real-time metrics and robot positions
+**Environment:**
+- `MAP_WIDTH, MAP_HEIGHT`: Map dimensions (default: 20×20)
+- `ROBOT_INITIAL_POSITIONS`: Starting positions for each robot
+- `PATH_LENGTH`: Number of steps in generated paths (default: 110)
 
-For detailed visualization documentation, see [VISUALIZATION_GUIDE.md](VISUALIZATION_GUIDE.md).
+**Constraints:**
+- `ENERGY_BUDGET`: Maximum distance per robot (default: 100)
+- `COMMUNICATION_RADIUS`: Communication range (default: 15.0)
+- `CONNECTIVITY_THRESHOLD`: Network connectivity threshold (default: 15.0)
 
-## Parameters
+**Objective Weights:**
+- `ALPHA`: Coverage weight (default: 1.0)
+- `BETA`: Connectivity weight (default: 0.5)
+- `GAMMA`: Disconnection penalty (default: 2.0)
+- `ZETA`: Obstacle penalty (default: 5.0)
 
-You can adjust the simulation behavior by modifying parameters in `main.py`:
+**Simulated Annealing:**
+- `SA_INITIAL_TEMPERATURE`: Starting temperature (default: 100.0)
+- `SA_COOLING_RATE`: Temperature reduction rate (default: 0.995)
+- `SA_MIN_TEMPERATURE`: Stopping threshold (default: 0.5)
+- `SA_MAX_ITERATIONS`: Maximum iterations (default: 5000)
 
-### Environment Parameters
-*   `N`, `M`: Map dimensions (default: 20x20)
-*   `ROBOTS_POSITIONS`: Initial positions of the robots
-*   `K`: Number of steps in the path (default: 110)
-
-### Constraint Parameters
-*   `ENERGY_BUDGET`: Maximum cells each robot can traverse (default: 100)
-*   `COMMUNICATION_RADIUS`: Communication range R_c (default: 15.0)
-*   `CONNECTIVITY_THRESHOLD`: Threshold for network connectivity (default: 15.0)
-
-### Objective Function Weights
-*   `ALPHA`: Coverage weight (default: 1.0)
-*   `BETA`: Connectivity weight (default: 0.5)
-*   `GAMMA`: Disconnection penalty weight (default: 2.0)
-*   `ZETA`: Obstacle encounter penalty weight (default: 5.0)
-
-### Simulated Annealing Parameters
-
-In `simulated_annealing.py`:
-*   `initial_temperature`: Starting temperature (default: 100.0)
-*   `cooling_rate`: Geometric cooling schedule rate (default: 0.995)
-*   `min_temperature`: Minimum temperature threshold (default: 0.5)
-*   `max_iterations`: Maximum optimization iterations (default: 5000)
+**Visualization:**
+- `VISUALIZATION_STEP_SIZE`: Animation frame skipping (default: 1)
+- `ANIMATION_SPEED_MS`: Milliseconds per frame (default: 50)
 
 ## Project Structure
 
 ```
-Optimization Project/
-│
-├── main.py                      # Main execution script
-├── simulated_annealing.py       # SA optimization algorithm
-├── visualization.py             # GUI visualization class
-├── README.md                    # This file
-├── VISUALIZATION_GUIDE.md       # Detailed visualization documentation
-│
-├── GUC_Thesis.tex              # LaTeX thesis document
-├── chapters/                    # Thesis chapters
-├── Figures/                     # Thesis figures
-├── References/                  # Bibliography
-└── Sections/                    # Thesis sections
+├── main.py                       # Main entry point
+├── config.py                     # Configuration parameters
+├── simulated_annealing.py        # SA algorithm implementation
+├── visualization.py              # GUI visualization
+├── optimization/                 # Optimization framework
+│   ├── base_optimizer.py         # Base class for algorithms
+│   └── base_visualizer.py        # Base class for visualizers
+└── latex/                        # Thesis LaTeX files
+    ├── GUC_Thesis.tex
+    ├── chapters/
+    ├── Figures/
+    ├── References/
+    └── Sections/
 ```
 
-## Algorithm Overview
+## Architecture
 
-### Objective Function
+The codebase uses an object-oriented design with base classes:
 
-The system maximizes:
+- **BaseOptimizer**: Abstract class for optimization algorithms
+  - Defines interface: `run()`, `generate_neighbor()`, `acceptance_criterion()`
+  - Makes it easy to add new algorithms (GA, PSO, ACO, etc.)
+
+- **BaseVisualizer**: Abstract class for visualization
+  - Provides common components (maps, coverage plots, animations)
+  - Algorithms add specific plots (e.g., temperature for SA)
+
+This design allows adding new optimization techniques with minimal code.
+
+## How It Works
+
+The system maximizes an objective function balancing coverage and connectivity:
 
 ```
-f = α·Coverage + β·Connectivity - γ·P_disconnect - ζ·P_obstacle
+f = α·Coverage + β·Connectivity - γ·Disconnection - ζ·Obstacles
 ```
 
-Where:
-- **Coverage**: Number of unique cells explored by all robots
-- **Connectivity**: Sum of distance-weighted communication links
-- **P_disconnect**: Penalty for robots disconnected from main network
-- **P_obstacle**: Penalty for obstacle encounters
+**Simulated Annealing** iteratively improves solutions by:
+1. Generating neighbor solutions (random movement modifications)
+2. Always accepting improvements
+3. Accepting worse solutions probabilistically (allows escaping local optima)
+4. Gradually reducing temperature to focus search
 
-### Constraints
+**Constraints enforced:**
+- Energy budget per robot
+- 4-connected movement (Manhattan distance ≤ 1)
+- Obstacle and collision avoidance
+- Map boundaries
 
-1. **Map Bounds**: Robots must stay within [0, N) × [0, M)
-2. **Motion**: Only 4-connected moves (Manhattan distance ≤ 1 per step)
-3. **Energy Budget**: Total distance traveled ≤ ℓ for each robot
-4. **Obstacle Avoidance**: Cannot occupy obstacle cells
-5. **Collision Avoidance**: No two robots at same position simultaneously
+## Adding New Algorithms
 
-### Simulated Annealing Process
+To implement a new optimization algorithm (e.g., Genetic Algorithm):
 
-1. Start with random feasible solution
-2. Generate neighbor by randomly modifying movements
-3. Accept better solutions always
-4. Accept worse solutions with probability exp(Δf/T)
-5. Gradually reduce temperature T
-6. Repeat until convergence or max iterations
+1. Create a class inheriting from `BaseOptimizer`
+2. Implement required methods: `run()`, `generate_neighbor()`, `acceptance_criterion()`
+3. Create a visualizer inheriting from `BaseVisualizer`
+4. Add algorithm-specific plots
 
-## Output
-
-### Console Output
-- Optimization progress (every 10 iterations)
-- Final cost breakdown
-- Text-based coverage map with robot positions
-
-### GUI Output
-- Interactive animation of robot paths
-- Real-time coverage and connectivity graphs
-- Detailed performance metrics
-- Exportable final visualization image
-
-## Examples
-
-### Example 1: Basic Run
-```bash
-python main.py
-```
-
-### Example 2: Custom Parameters
+Example structure:
 ```python
-# In main.py, modify:
-N, M = 30, 30  # Larger map
-K = 150        # Longer paths
-ALPHA = 2.0    # Prioritize coverage
+from optimization.base_optimizer import BaseOptimizer
+
+class GeneticAlgorithm(BaseOptimizer):
+    def run(self, initial_solution):
+        # Implement GA logic
+        pass
 ```
 
-### Example 3: Save Visualization Only
-```python
-from visualization import RobotPathVisualizer
-
-viz = RobotPathVisualizer(...)
-viz._update_visualization(viz.K - 1)  # Jump to final state
-viz.save_final_state('results.png')
-```
-
-## Troubleshooting
-
-### No Feasible Initial Solution
-- Reduce `K` (path length)
-- Increase `ENERGY_BUDGET`
-- Reduce number of obstacles in map
-
-### Poor Optimization Results
-- Increase `max_iterations` in SimulatedAnnealing
-- Adjust `initial_temperature` or `cooling_rate`
-- Tune objective function weights (α, β, γ, ζ)
-
-### Visualization Issues
-- Ensure tkinter is installed: `python -c "import tkinter"`
-- Update matplotlib: `pip install --upgrade matplotlib`
-- See [VISUALIZATION_GUIDE.md](VISUALIZATION_GUIDE.md) for details
-
-## Future Work
-
-- [ ] Implement additional optimization algorithms (Genetic Algorithm, PSO)
-- [ ] Add dynamic obstacle support
-- [ ] Multi-objective optimization (Pareto frontier)
-- [ ] Real-time replanning capabilities
-- [ ] 3D environment support
-- [ ] ROS integration for real robots
-
-## Contributing
-
-Contributions are welcome! Please:
-1. Fork the repository
-2. Create a feature branch
-3. Add tests for new functionality
-4. Submit a pull request
-
-## License
-
-This project is part of a thesis at GUC (German University in Cairo).
-
-## References
-
-See `References/myref.bib` for academic references and related work.
+The base classes handle visualization integration, state tracking, and common functionality.
 
 ---
 
 **Author**: Amr Hegazy  
-**Institution**: German University in Cairo (GUC)  
-**Project**: Multi-Robot Path Planning Optimization
+**Institution**: German University in Cairo (GUC)

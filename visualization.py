@@ -16,19 +16,22 @@ from tkinter import ttk, messagebox
 import math
 import threading
 import time
+from optimization.base_visualizer import BaseVisualizer
 
 
-class OptimizationVisualizer:
+class OptimizationVisualizer(BaseVisualizer):
     """
     Visualizes the Simulated Annealing optimization process in real-time.
     Shows objective function evolution, temperature cooling, and best solution found.
+    
+    Extends BaseVisualizer with SA-specific temperature plot.
     """
     
     def __init__(self, initial_positions, map_grid, 
                  communication_radius, connectivity_threshold,
                  alpha, beta, gamma, zeta, visualization_step_size=1):
         """
-        Initialize the optimization visualizer.
+        Initialize the SA optimization visualizer.
         
         Args:
             initial_positions: list of initial (x, y) positions
@@ -38,174 +41,29 @@ class OptimizationVisualizer:
             alpha, beta, gamma, zeta: objective function weights
             visualization_step_size: number of steps to skip in animation (default: 1)
         """
-        self.initial_positions = initial_positions
-        self.map_grid = map_grid
-        self.communication_radius = communication_radius
-        self.connectivity_threshold = connectivity_threshold
-        self.alpha = alpha
-        self.beta = beta
-        self.gamma = gamma
-        self.zeta = zeta
-        self.visualization_step_size = visualization_step_size  # Steps to skip in animation
-        
-        self.R = len(initial_positions)  # Number of robots
-        self.N, self.M = map_grid.shape  # Map dimensions
-        
-        # Optimization tracking
-        self.iterations = []
+        # SA-specific tracking
         self.temperatures = []
-        self.current_costs = []
-        self.best_costs = []
-        self.best_path = None
-        self.best_cost = -np.inf
         self.initial_temperature = None  # Will be set on first update
-        
-        # Animation state for both solutions
-        self.current_solution_path = None  # Currently displayed "current" path
-        self.animation_step = 0
-        self.animation_speed = 50  # milliseconds per step
-        self.is_animating = False
-        self.pending_current_path = None
-        self.pending_best_path = None
-        self.pending_current_update = False
-        self.pending_best_update = False
-        self.pending_display_state = None
-        self.display_iteration = None
         self.display_temperature = None
-        self.display_current_cost = None
-        self.display_best_cost = None
         
-        # Synchronization for optimization
-        self.animation_complete = True  # Start as True
-        self.waiting_for_animation = False
+        # Call parent constructor (this will call _create_gui which calls _create_visualization_panel)
+        super().__init__(initial_positions, map_grid, communication_radius, 
+                        connectivity_threshold, alpha, beta, gamma, zeta, 
+                        visualization_step_size)
         
-        # Robot markers for current and best solutions
-        self.current_robot_markers = []
-        self.current_robot_trails = []
-        self.current_visited = set()
-        
-        self.best_robot_markers = []
-        self.best_robot_trails = []
-        self.best_visited = set()
-        
-        # Coverage tracking for incremental plotting
-        self.current_coverage_data = []  # Coverage percentage at each animation step
-        
-        # Color scheme for robots
-        self.robot_colors = plt.cm.tab10(np.linspace(0, 1, self.R))
-        
-        # Create GUI
-        self._create_gui()
-        
-    def _create_gui(self):
-        """Create the main GUI window."""
-        self.root = tk.Tk()
-        self.root.title("Simulated Annealing Optimization - Real-time Visualization")
-        self.root.geometry("1800x1000")
-        self.root.configure(bg='#f0f0f0')
-        
-        # Create main container
-        main_container = ttk.Frame(self.root)
-        main_container.pack(fill=tk.BOTH, expand=True, padx=10, pady=10)
-        
-        # Title
-        title_label = tk.Label(main_container, 
-                              text="Multi-Robot Path Planning - Simulated Annealing Optimization",
-                              font=('Arial', 16, 'bold'),
-                              bg='#f0f0f0')
-        title_label.pack(pady=(0, 5))
-        
-        # Control panel
-        self._create_control_panel(main_container)
-        
-        # Create visualization panel
-        self._create_visualization_panel(main_container)
-        
-        # Status bar
-        self.status_label = tk.Label(main_container, 
-                                     text="Status: Waiting for optimization to start...",
-                                     font=('Arial', 10),
-                                     bg='#f0f0f0',
-                                     anchor=tk.W)
-        self.status_label.pack(fill=tk.X, pady=(10, 0))
+        # Set animation speed from config if available
+        try:
+            import config
+            self.animation_speed = config.ANIMATION_SPEED_MS
+        except (ImportError, AttributeError):
+            pass  # Use default from base class
     
-    def _create_control_panel(self, parent):
-        """Create control panel with speed controls."""
-        control_frame = ttk.LabelFrame(parent, text="Animation Controls", padding=10)
-        control_frame.pack(fill=tk.X, pady=(0, 10))
-        
-        # Speed control
-        speed_frame = ttk.Frame(control_frame)
-        speed_frame.pack(fill=tk.X)
-        
-        ttk.Label(speed_frame, text="Animation Speed:", font=('Arial', 10, 'bold')).pack(side=tk.LEFT, padx=(0, 10))
-        
-        # Slower button
-        self.slower_btn = ttk.Button(speed_frame, text="◄◄ Slower", 
-                                     command=self._slower_animation, width=12)
-        self.slower_btn.pack(side=tk.LEFT, padx=5)
-        
-        # Speed label
-        self.speed_display = tk.Label(speed_frame, 
-                                     text=f"{self.animation_speed} ms/frame",
-                                     font=('Arial', 10),
-                                     bg='#f0f0f0',
-                                     width=15,
-                                     relief=tk.SUNKEN,
-                                     bd=2)
-        self.speed_display.pack(side=tk.LEFT, padx=5)
-        
-        # Faster button
-        self.faster_btn = ttk.Button(speed_frame, text="Faster ►►", 
-                                     command=self._faster_animation, width=12)
-        self.faster_btn.pack(side=tk.LEFT, padx=5)
-        
-        # Reset speed button
-        self.reset_speed_btn = ttk.Button(speed_frame, text="Reset Speed", 
-                                          command=self._reset_speed, width=12)
-        self.reset_speed_btn.pack(side=tk.LEFT, padx=5)
-        
-        # Network connections toggle
-        self.show_network_var = tk.BooleanVar(value=True)
-        self.network_checkbox = ttk.Checkbutton(speed_frame, 
-                                                text="Show Network Connections",
-                                                variable=self.show_network_var,
-                                                command=self._toggle_network)
-        self.network_checkbox.pack(side=tk.LEFT, padx=20)
-        
-        # Step size control
-        step_size_frame = ttk.Frame(control_frame)
-        step_size_frame.pack(fill=tk.X, pady=(10, 0))
-        
-        ttk.Label(step_size_frame, text="Visualization Step Size:", font=('Arial', 10, 'bold')).pack(side=tk.LEFT, padx=(0, 10))
-        
-        # Decrease step size button
-        self.decrease_step_btn = ttk.Button(step_size_frame, text="◄ Decrease", 
-                                            command=self._decrease_step_size, width=12)
-        self.decrease_step_btn.pack(side=tk.LEFT, padx=5)
-        
-        # Step size label
-        self.step_size_display = tk.Label(step_size_frame, 
-                                         text=f"Step: {self.visualization_step_size}",
-                                         font=('Arial', 10),
-                                         bg='#f0f0f0',
-                                         width=15,
-                                         relief=tk.SUNKEN,
-                                         bd=2)
-        self.step_size_display.pack(side=tk.LEFT, padx=5)
-        
-        # Increase step size button
-        self.increase_step_btn = ttk.Button(step_size_frame, text="Increase ►", 
-                                            command=self._increase_step_size, width=12)
-        self.increase_step_btn.pack(side=tk.LEFT, padx=5)
-        
-        # Reset step size button
-        self.reset_step_size_btn = ttk.Button(step_size_frame, text="Reset Step", 
-                                              command=self._reset_step_size, width=12)
-        self.reset_step_size_btn.pack(side=tk.LEFT, padx=5)
-        
+    def get_algorithm_name(self):
+        """Return the algorithm name for display."""
+        return "Simulated Annealing"
+    
     def _create_visualization_panel(self, parent):
-        """Create the matplotlib visualization panel."""
+        """Create the matplotlib visualization panel with SA-specific temperature plot."""
         # Create figure with subplots - redesigned for clarity
         self.fig = plt.Figure(figsize=(19.0, 10.6), facecolor='white')
         
@@ -223,7 +81,7 @@ class OptimizationVisualizer:
             bottom=0.05,
         )
         
-        # Top left: Temperature over iterations
+        # Top left: Temperature over iterations (SA-specific)
         self.ax_temp = self.fig.add_subplot(gs[0, 0])
         self.ax_temp.set_title('Temperature Cooling Schedule', fontsize=13, fontweight='bold', pad=10)
         self.ax_temp.set_xlabel('Iteration', fontsize=11)
@@ -237,48 +95,22 @@ class OptimizationVisualizer:
         self.ax_obj.set_ylabel('Objective Value', fontsize=11)
         self.ax_obj.grid(True, alpha=0.3, linestyle='--')
         
-        # Top middle: Current solution being evaluated
-        self.ax_current = self.fig.add_subplot(gs[0, 1])
-        self.ax_current.set_title('Current Solution', fontsize=13, fontweight='bold', pad=10)
-        self.ax_current.set_xlabel('Y Coordinate', fontsize=11)
-        self.ax_current.set_ylabel('X Coordinate', fontsize=11)
-        self.ax_current.set_aspect('equal')
-        self.ax_current.grid(True, alpha=0.2, linestyle='--', linewidth=0.5)
-        
-        # Bottom middle: Best solution found so far
-        self.ax_best = self.fig.add_subplot(gs[1, 1])
-        self.ax_best.set_title('Best Solution So Far', fontsize=13, fontweight='bold', pad=10)
-        self.ax_best.set_xlabel('Y Coordinate', fontsize=11)
-        self.ax_best.set_ylabel('X Coordinate', fontsize=11)
-        self.ax_best.set_aspect('equal')
-        self.ax_best.grid(True, alpha=0.2, linestyle='--', linewidth=0.5)
-        
-        # Right column: Coverage over time (top) and statistics (bottom)
-        self.ax_coverage = self.fig.add_subplot(gs[0, 2])
-        self.ax_coverage.set_title('Coverage Over Time (Current Solution)', fontsize=12, fontweight='bold', pad=10)
-        self.ax_coverage.set_xlabel('Time Step', fontsize=10)
-        self.ax_coverage.set_ylabel('Coverage (%)', fontsize=10)
-        self.ax_coverage.grid(True, alpha=0.3, linestyle='--')
-        self.ax_coverage.set_ylim(0, 100)
-        
-        # Bottom right: Statistics and info
-        self.ax_stats = self.fig.add_subplot(gs[1, 2])
-        self.ax_stats.axis('off')
-        self.ax_stats.set_title('Statistics', fontsize=12, fontweight='bold', pad=10)
+        # Use base class helper to create common map axes
+        self.ax_current, self.ax_best, self.ax_coverage, self.ax_stats = \
+            self._create_common_map_axes(gs, self.fig)
         
         # Embed in tkinter
         self.canvas = FigureCanvasTkAgg(self.fig, parent)
         self.canvas.draw()
         self.canvas.get_tk_widget().pack(fill=tk.BOTH, expand=True)
         
-        # Initialize empty plots
-        self._initialize_plots()
-        
-        # Initialize robot markers for animations
+        # Initialize plots
+        self._initialize_sa_plots()
+        self._initialize_common_plots()
         self._initialize_robot_markers()
-        
-    def _initialize_plots(self):
-        """Initialize empty plots."""
+    
+    def _initialize_sa_plots(self):
+        """Initialize SA-specific plots (temperature and objective function)."""
         # Temperature plot
         self.temp_line, = self.ax_temp.plot([], [], 'r-', linewidth=2.5, label='Temperature')
         self.ax_temp.legend(loc='upper right', fontsize=10)
@@ -287,215 +119,25 @@ class OptimizationVisualizer:
         self.current_line, = self.ax_obj.plot([], [], 'b-', linewidth=1.5, alpha=0.7, label='Current Solution')
         self.best_line, = self.ax_obj.plot([], [], 'g-', linewidth=2.5, label='Best Solution')
         self.ax_obj.legend(loc='lower right', fontsize=10)
-        
-        # Coverage plot (line only)
-        self.coverage_line, = self.ax_coverage.plot([], [], color='#1f77b4', linewidth=2.5)
-        
-        # Initialize map views
-        self._initialize_map_view(self.ax_current, "Current Solution")
-        self._initialize_map_view(self.ax_best, "Best Solution So Far")
-        
-        self.canvas.draw()
     
-    def _initialize_robot_markers(self):
-        """Initialize robot markers and trails for animations."""
-        # Current solution markers
-        self.current_robot_markers = []
-        self.current_robot_trails = []
-        self.current_robot_texts = []
-        
-        for r in range(self.R):
-            x, y = self.initial_positions[r]
-            
-            # Marker
-            marker = Circle((y, x), 0.4, color=self.robot_colors[r], 
-                          ec='black', linewidth=2, zorder=10, alpha=0.9)
-            self.ax_current.add_patch(marker)
-            self.current_robot_markers.append(marker)
-            
-            # Trail
-            trail, = self.ax_current.plot([], [], '-', color=self.robot_colors[r], 
-                                         linewidth=2, alpha=0.6, zorder=5)
-            self.current_robot_trails.append(trail)
-            
-            # Text label
-            text = self.ax_current.text(y + 0.7, x, f'R{r+1}', ha='left', va='center',
-                                       fontsize=9, fontweight='bold', zorder=11,
-                                       bbox=dict(boxstyle='round,pad=0.2', facecolor='white', 
-                                                edgecolor=self.robot_colors[r], linewidth=1.5))
-            self.current_robot_texts.append(text)
-        
-        # Best solution markers
-        self.best_robot_markers = []
-        self.best_robot_trails = []
-        self.best_robot_texts = []
-        
-        for r in range(self.R):
-            x, y = self.initial_positions[r]
-            
-            # Marker
-            marker = Circle((y, x), 0.4, color=self.robot_colors[r], 
-                          ec='black', linewidth=2, zorder=10, alpha=0.9)
-            self.ax_best.add_patch(marker)
-            self.best_robot_markers.append(marker)
-            
-            # Trail
-            trail, = self.ax_best.plot([], [], '-', color=self.robot_colors[r], 
-                                      linewidth=2, alpha=0.6, zorder=5)
-            self.best_robot_trails.append(trail)
-            
-            # Text label
-            text = self.ax_best.text(y + 0.7, x, f'R{r+1}', ha='left', va='center',
-                                    fontsize=9, fontweight='bold', zorder=11,
-                                    bbox=dict(boxstyle='round,pad=0.2', facecolor='white', 
-                                             edgecolor=self.robot_colors[r], linewidth=1.5))
-            self.best_robot_texts.append(text)
-        
-        # Network connection lines (will be updated during animation)
-        self.current_network_lines = []
-        self.best_network_lines = []
-        
-    def _initialize_robot_markers_for_ax(self, ax, markers, trails, texts):
-        """Reinitialize robot markers for a specific axes."""
-        # Just clear the lists - ax.clear() already removed the artists from the plot
-        markers.clear()
-        trails.clear()
-        texts.clear()
-        
-        # Create new markers
-        for r in range(self.R):
-            x, y = self.initial_positions[r]
-            
-            # Marker
-            marker = Circle((y, x), 0.4, color=self.robot_colors[r], 
-                          ec='black', linewidth=2, zorder=10, alpha=0.9)
-            ax.add_patch(marker)
-            markers.append(marker)
-            
-            # Trail
-            trail, = ax.plot([], [], '-', color=self.robot_colors[r], 
-                            linewidth=2, alpha=0.6, zorder=5)
-            trails.append(trail)
-            
-            # Text label
-            text = ax.text(y + 0.7, x, f'R{r+1}', ha='left', va='center',
-                          fontsize=9, fontweight='bold', zorder=11,
-                          bbox=dict(boxstyle='round,pad=0.2', facecolor='white', 
-                                   edgecolor=self.robot_colors[r], linewidth=1.5))
-            texts.append(text)
-    
-    def _apply_pending_visual_updates(self):
-        """Apply queued map resets once the animation is idle."""
-        if self.pending_best_update and self.pending_best_path is not None:
-            # Remove any lingering network lines (axes already cleared later)
-            for line in self.best_network_lines:
-                try:
-                    line.remove()
-                except Exception:
-                    pass
-            self.best_network_lines = []
-            self.best_visited.clear()
-            self.best_path = self.pending_best_path
-            self.pending_best_path = None
-            self._initialize_map_view(self.ax_best, "Best Solution So Far")
-            self._initialize_robot_markers_for_ax(
-                self.ax_best,
-                self.best_robot_markers,
-                self.best_robot_trails,
-                self.best_robot_texts,
-            )
-            self.pending_best_update = False
-        
-        if self.pending_current_update and self.pending_current_path is not None:
-            for line in self.current_network_lines:
-                try:
-                    line.remove()
-                except Exception:
-                    pass
-            self.current_network_lines = []
-            self.current_visited.clear()
-            self.current_solution_path = self.pending_current_path
-            self.pending_current_path = None
-            self._initialize_map_view(self.ax_current, "Current Solution")
-            self._initialize_robot_markers_for_ax(
-                self.ax_current,
-                self.current_robot_markers,
-                self.current_robot_trails,
-                self.current_robot_texts,
-            )
-            self.pending_current_update = False
-            # Clear coverage plot for new animation - it will be drawn incrementally
-            self.coverage_line.set_data([], [])
-            self.ax_coverage.set_xlim(0, 1)
-            self.ax_coverage.set_ylim(0, 100)
-        
-        if self.pending_display_state is not None:
-            self.display_iteration = self.pending_display_state["iteration"]
-            self.display_temperature = self.pending_display_state["temperature"]
-            self.display_current_cost = self.pending_display_state["current_cost"]
-            self.display_best_cost = self.pending_display_state["best_cost"]
-            self.pending_display_state = None
-            self._update_statistics()
-            self._update_status_bar()
-            self.canvas.draw_idle()
-        
-    def _initialize_map_view(self, ax, title):
-        """Initialize a map view with grid and obstacles."""
-        ax.clear()
-        ax.set_title(title, fontsize=12, fontweight='bold', pad=10)
-        ax.set_xlabel('Y Coordinate', fontsize=10)
-        ax.set_ylabel('X Coordinate', fontsize=10)
-        ax.set_xlim(-1, self.M)
-        ax.set_ylim(self.N, -1)
-        ax.set_aspect('equal')
-        ax.grid(True, alpha=0.2, linestyle='--', linewidth=0.5)
-        
-        # Draw grid background
-        for i in range(self.N):
-            for j in range(self.M):
-                if self.map_grid[i, j] == 2:  # Obstacle
-                    rect = Rectangle((j-0.5, i-0.5), 1, 1, 
-                                   facecolor='#333333', edgecolor='#555555', linewidth=0.5)
-                    ax.add_patch(rect)
-                else:
-                    rect = Rectangle((j-0.5, i-0.5), 1, 1, 
-                                   facecolor='#fafafa', edgecolor='#e0e0e0', linewidth=0.3)
-                    ax.add_patch(rect)
-        
-        # Show initial positions with faded markers
-        for r, (x, y) in enumerate(self.initial_positions):
-            circle = Circle((y, x), 0.35, color=self.robot_colors[r], 
-                          ec='black', linewidth=1.5, zorder=10, alpha=0.3)
-            ax.add_patch(circle)
-        
     def update_optimization(self, iteration, temperature, current_cost, best_cost, best_path, current_path=None):
         """
         Update visualization with new optimization data.
-        Called from the SA algorithm during optimization.
+        
+        Implementation of abstract method from BaseVisualizer.
+        Handles SA-specific temperature parameter.
         """
         # Store initial temperature on first update
         if self.initial_temperature is None:
             self.initial_temperature = temperature
         
-        # Wait for any ongoing animation to complete
-        self.animation_complete = False
-        
-        self.iterations.append(iteration)
+        # Store SA-specific data
         self.temperatures.append(temperature)
-        self.current_costs.append(current_cost)
-        self.best_costs.append(best_cost)
         
-        if best_cost > self.best_cost:
-            self.best_cost = best_cost
-            self.pending_best_path = best_path
-            self.pending_best_update = True
+        # Update common data through parent method
+        self._update_common_data(iteration, current_cost, best_cost, best_path, current_path)
         
-        # Store current solution for visualization (queue update until animation finishes)
-        if current_path is not None:
-            self.pending_current_path = current_path
-            self.pending_current_update = True
-        
-        # Record the iteration details for display once visualization catches up
+        # Store display state including temperature
         self.pending_display_state = {
             "iteration": iteration,
             "temperature": temperature,
@@ -503,38 +145,15 @@ class OptimizationVisualizer:
             "best_cost": best_cost,
         }
         
-        # Update plots after every iteration for real-time feedback
+        # Update all plots
         self._update_plots()
-        
-        # If the animation is idle, apply any pending updates and restart the animation
-        if not self.is_animating:
-            if self.pending_best_update or self.pending_current_update:
-                self._apply_pending_visual_updates()
-            if self.current_solution_path is not None or self.best_path is not None:
-                self.animation_step = 0
-                self.current_coverage_data = []  # Reset coverage data for new animation
-                self.is_animating = True
-                self.root.after(0, self._animate_solutions)
-    
-    def wait_for_animation_complete(self):
-        """
-        Block until the current animation is complete.
-        This is called by the optimization algorithm to synchronize.
-        """
-        self.waiting_for_animation = True
-        while not self.animation_complete and self.waiting_for_animation:
-            self.root.update()
-            # Small sleep to prevent busy waiting
-            import time
-            time.sleep(0.001)
-        self.waiting_for_animation = False
     
     def _update_plots(self):
         """Update all plots with current data."""
         if len(self.iterations) == 0:
             return
             
-        # Update temperature plot
+        # Update temperature plot (SA-specific)
         self.temp_line.set_data(self.iterations, self.temperatures)
         self.ax_temp.relim()
         self.ax_temp.autoscale_view()
@@ -554,265 +173,8 @@ class OptimizationVisualizer:
         self.canvas.draw_idle()
         self.root.update()
     
-    def _update_current_solution_coverage_incremental(self, step):
-        """Update coverage plot incrementally as animation progresses."""
-        if self.current_solution_path is None:
-            return
-        
-        if step >= len(self.current_solution_path[0]):
-            return
-        
-        # Calculate coverage up to current step
-        visited = set()
-        for r in range(self.R):
-            for t in range(min(step + 1, len(self.current_solution_path[r]))):
-                pos = self.current_solution_path[r][t]
-                pos_tuple = tuple(pos) if isinstance(pos, np.ndarray) else pos
-                if self.map_grid[pos_tuple[0], pos_tuple[1]] == 0:
-                    visited.add(pos_tuple)
-        
-        coverage_pct = (len(visited) / (self.N * self.M)) * 100
-        self.current_coverage_data.append(coverage_pct)
-        
-        # Update coverage plot with current data
-        self.coverage_line.set_data(range(len(self.current_coverage_data)), self.current_coverage_data)
-        K = len(self.current_solution_path[0])
-        self.ax_coverage.set_xlim(0, max(K - 1, 1))
-        self.ax_coverage.set_ylim(0, 100)
-    
-    def _animate_solutions(self):
-        """Animate both current and best solutions simultaneously."""
-        if self.current_solution_path is None and self.best_path is None:
-            self.is_animating = False
-            self.animation_complete = True  # Signal completion
-            return
-        
-        # Determine path length
-        K = 0
-        if self.current_solution_path is not None:
-            K = max(K, len(self.current_solution_path[0]))
-        if self.best_path is not None:
-            K = max(K, len(self.best_path[0]))
-        
-        if self.animation_step < K:
-            # Animate current solution
-            if self.current_solution_path is not None:
-                self._update_robot_animation(
-                    self.current_solution_path,
-                    self.current_robot_markers,
-                    self.current_robot_trails,
-                    self.current_robot_texts,
-                    self.current_visited,
-                    self.ax_current,
-                    self.animation_step,
-                    f"Current Solution (Step {self.animation_step + 1}/{K})",
-                    self.current_network_lines
-                )
-                # Update coverage plot incrementally for current solution
-                self._update_current_solution_coverage_incremental(self.animation_step)
-            
-            # Animate best solution
-            if self.best_path is not None:
-                self._update_robot_animation(
-                    self.best_path,
-                    self.best_robot_markers,
-                    self.best_robot_trails,
-                    self.best_robot_texts,
-                    self.best_visited,
-                    self.ax_best,
-                    self.animation_step,
-                    f"Best Solution (Step {self.animation_step + 1}/{K})",
-                    self.best_network_lines
-                )
-            
-            self.canvas.draw_idle()
-            self.animation_step += self.visualization_step_size  # Use step size instead of 1
-            
-            # Schedule next frame
-            self.root.after(self.animation_speed, self._animate_solutions)
-        else:
-            # Animation complete, reset for next update
-            self.animation_step = 0
-            self.is_animating = False
-            self.animation_complete = True  # Signal completion
-            if self.pending_best_update or self.pending_current_update:
-                self._apply_pending_visual_updates()
-                if self.current_solution_path is not None or self.best_path is not None:
-                    self.animation_step = 0
-                    self.current_coverage_data = []  # Reset coverage data for new animation
-                    self.is_animating = True
-                    self.animation_complete = False  # New animation starting
-                    self.root.after(0, self._animate_solutions)
-    
-    def _update_robot_animation(self, path_array, markers, trails, texts, visited_set, ax, step, title, network_lines=None):
-        """Update robot positions for one animation frame."""
-        if step >= len(path_array[0]):
-            return
-        
-        # Safety check: ensure markers list has correct size
-        if len(markers) != self.R:
-            return
-        
-        # Clear previous network connections
-        if network_lines is not None:
-            for line in network_lines:
-                try:
-                    line.remove()
-                except:
-                    pass
-            network_lines.clear()
-        
-        # Collect current positions
-        current_positions = []
-        
-        for r in range(self.R):
-            pos = path_array[r][step]
-            pos_tuple = tuple(pos) if isinstance(pos, np.ndarray) else pos
-            x, y = pos_tuple
-            current_positions.append((x, y))
-            
-            # Update marker position
-            markers[r].center = (y, x)
-            
-            # Update text position
-            texts[r].set_position((y + 0.7, x))
-            
-            # Update trail
-            trail_y = []
-            trail_x = []
-            for s in range(step + 1):
-                p = path_array[r][s]
-                p_tuple = tuple(p) if isinstance(p, np.ndarray) else p
-                trail_y.append(p_tuple[1])
-                trail_x.append(p_tuple[0])
-            trails[r].set_data(trail_y, trail_x)
-            
-            # Mark visited cells - check ALL steps up to current step to handle step size > 1
-            # Calculate the previous step that was animated
-            prev_step = max(0, step - self.visualization_step_size)
-            
-            # Mark all cells from prev_step to current step
-            for s in range(prev_step, step + 1):
-                if s < len(path_array[r]):
-                    p = path_array[r][s]
-                    p_tuple = tuple(p) if isinstance(p, np.ndarray) else p
-                    cell_x, cell_y = p_tuple
-                    
-                    if self.map_grid[cell_x, cell_y] == 0 and p_tuple not in visited_set:
-                        visited_set.add(p_tuple)
-                        rect = Rectangle((cell_y-0.5, cell_x-0.5), 1, 1, 
-                                       facecolor='#90EE90', edgecolor='#cccccc', 
-                                       linewidth=0.3, alpha=0.5, zorder=1)
-                        ax.add_patch(rect)
-        
-        # Draw network connections if enabled
-        if self.show_network_var.get() and network_lines is not None:
-            for i in range(self.R):
-                for j in range(i + 1, self.R):
-                    x1, y1 = current_positions[i]
-                    x2, y2 = current_positions[j]
-                    
-                    # Calculate distance
-                    dist = math.sqrt((x1 - x2)**2 + (y1 - y2)**2)
-                    
-                    # Draw connection if within communication radius
-                    if dist <= self.communication_radius:
-                        # Color and style based on distance
-                        if dist <= self.connectivity_threshold:
-                            # Strong connection (within connectivity threshold)
-                            line, = ax.plot([y1, y2], [x1, x2], 
-                                          'c-', linewidth=2.5, alpha=0.6, zorder=3)
-                        else:
-                            # Weak connection (within comm radius but beyond connectivity)
-                            line, = ax.plot([y1, y2], [x1, x2], 
-                                          'c--', linewidth=1.5, alpha=0.4, zorder=3)
-                        network_lines.append(line)
-        
-        # Update title
-        coverage = (len(visited_set) / (self.N * self.M)) * 100
-        
-        # Count active connections
-        num_connections = 0
-        if self.show_network_var.get():
-            for i in range(self.R):
-                for j in range(i + 1, self.R):
-                    x1, y1 = current_positions[i]
-                    x2, y2 = current_positions[j]
-                    dist = math.sqrt((x1 - x2)**2 + (y1 - y2)**2)
-                    if dist <= self.communication_radius:
-                        num_connections += 1
-        
-        max_connections = self.R * (self.R - 1) // 2
-        ax.set_title(f"{title} - Coverage: {coverage:.1f}% | Connections: {num_connections}/{max_connections}", 
-                    fontsize=13, fontweight='bold', pad=10)
-        
-    def _draw_solution(self, ax, path_array, title):
-        """Draw a solution on the specified axes."""
-        # Clear and reinitialize
-        self._initialize_map_view(ax, title)
-        
-        if path_array is None:
-            return
-        
-        # Draw paths and collect visited cells
-        visited_cells = set()
-        for r in range(self.R):
-            path = path_array[r]
-            
-            # Draw path line
-            y_coords = [p[1] for p in path]
-            x_coords = [p[0] for p in path]
-            ax.plot(y_coords, x_coords, '-', 
-                   color=self.robot_colors[r], alpha=0.6, linewidth=2, zorder=5)
-            
-            # Mark visited cells
-            for pos in path:
-                pos_tuple = tuple(pos) if isinstance(pos, np.ndarray) else pos
-                x, y = pos_tuple
-                if self.map_grid[x, y] == 0:
-                    visited_cells.add(pos_tuple)
-        
-        # Highlight explored cells
-        for (x, y) in visited_cells:
-            rect = Rectangle((y-0.5, x-0.5), 1, 1, 
-                           facecolor='#90EE90', edgecolor='#cccccc', 
-                           linewidth=0.3, alpha=0.5, zorder=1)
-            ax.add_patch(rect)
-        
-        # Draw final robot positions
-        for r in range(self.R):
-            final_pos = path_array[r][-1]
-            final_pos_tuple = tuple(final_pos) if isinstance(final_pos, np.ndarray) else final_pos
-            final_x, final_y = final_pos_tuple
-            circle = Circle((final_y, final_x), 0.4, color=self.robot_colors[r], 
-                          ec='black', linewidth=2, zorder=10)
-            ax.add_patch(circle)
-            
-            # Add robot label
-            ax.text(final_y + 0.8, final_x, f'R{r+1}', ha='left', va='center',
-                   fontsize=9, fontweight='bold',
-                   bbox=dict(boxstyle='round,pad=0.3', facecolor='white', 
-                            edgecolor=self.robot_colors[r], linewidth=1.5))
-        
-        # Add compact legend outside plot area
-        if ax == self.ax_best or ax == self.ax_map:
-            legend_elements = [
-                Rectangle((0, 0), 1, 1, fc='#90EE90', alpha=0.5, label='Explored'),
-                Rectangle((0, 0), 1, 1, fc='#333333', label='Obstacle')
-            ]
-            for r in range(min(self.R, 4)):  # Limit to 4 robots in legend
-                legend_elements.append(
-                    Line2D([0], [0], marker='o', color='w', 
-                          markerfacecolor=self.robot_colors[r], 
-                          markersize=8, label=f'R{r+1}',
-                          markeredgecolor='black', markeredgewidth=1.5)
-                )
-            
-            ax.legend(handles=legend_elements, loc='upper left', 
-                     fontsize=8, framealpha=0.95, ncol=2)
-        
     def _update_statistics(self):
-        """Update statistics panel with educational information."""
+        """Update statistics panel with SA-specific information."""
         self.ax_stats.clear()
         self.ax_stats.axis('off')
         
@@ -879,7 +241,7 @@ class OptimizationVisualizer:
         )
     
     def _update_status_bar(self, final=False, final_coverage=None):
-        """Refresh the status bar text."""
+        """Update status bar with SA-specific information."""
         if len(self.iterations) == 0:
             status_text = "Status: Waiting for optimization to start..."
         else:
@@ -893,83 +255,7 @@ class OptimizationVisualizer:
                 status_text += f" | Final Coverage: {final_coverage:.1f}%"
                 status_text += f" | Total Iterations: {self.iterations[-1]}"
         self.status_label.config(text=status_text)
-        
-    def finish_optimization(self):
-        """Called when optimization is complete."""
-        self.is_animating = False  # Stop current animations
-        
-        # Final update of all plots
-        self._update_plots()
-        self.display_iteration = self.iterations[-1] if self.iterations else None
-        self.display_temperature = self.temperatures[-1] if self.temperatures else None
-        self.display_current_cost = self.current_costs[-1] if self.current_costs else None
-        self.display_best_cost = self.best_costs[-1] if self.best_costs else None
-        
-        # Update status
-        final_coverage = 0
-        if self.best_path is not None:
-            visited = set()
-            for r in range(self.R):
-                for pos in self.best_path[r]:
-                    pos_tuple = tuple(pos) if isinstance(pos, np.ndarray) else pos
-                    if self.map_grid[pos_tuple[0], pos_tuple[1]] == 0:
-                        visited.add(pos_tuple)
-            final_coverage = (len(visited) / (self.N * self.M)) * 100
-        
-        self._update_status_bar(final=True, final_coverage=final_coverage)
-        
-        self.canvas.draw()
-        
-    def show(self):
-        """Display the visualization window."""
-        self.root.mainloop()
-        
-    def save_figure(self, filename='optimization_results.png'):
-        """Save the current figure."""
-        self.fig.savefig(filename, dpi=300, bbox_inches='tight')
-        print(f"Figure saved to {filename}")
-    
-    def _slower_animation(self):
-        """Slow down the animation speed."""
-        self.animation_speed = min(500, self.animation_speed + 25)
-        self.speed_display.config(text=f"{self.animation_speed} ms/frame")
-    
-    def _faster_animation(self):
-        """Speed up the animation speed."""
-        if self.animation_speed > 50:
-            self.animation_speed = max(1, self.animation_speed - 25)
-        elif self.animation_speed > 10:
-            self.animation_speed = max(1, self.animation_speed - 10)
-        else:
-            self.animation_speed = max(1, self.animation_speed - 1)
-        self.speed_display.config(text=f"{self.animation_speed} ms/frame")
-    
-    def _reset_speed(self):
-        """Reset animation speed to default."""
-        self.animation_speed = 50
-        self.speed_display.config(text=f"{self.animation_speed} ms/frame")
-    
-    def _toggle_network(self):
-        """Toggle network connections visibility."""
-        # This will affect next frame update
-        pass
-    
-    def _decrease_step_size(self):
-        """Decrease the visualization step size."""
-        if self.visualization_step_size > 1:
-            self.visualization_step_size -= 1
-            self.step_size_display.config(text=f"Step: {self.visualization_step_size}")
-    
-    def _increase_step_size(self):
-        """Increase the visualization step size."""
-        self.visualization_step_size += 1
-        self.step_size_display.config(text=f"Step: {self.visualization_step_size}")
-    
-    def _reset_step_size(self):
-        """Reset visualization step size to default."""
-        self.visualization_step_size = 1
-        self.step_size_display.config(text=f"Step: {self.visualization_step_size}")
-    
+
 
 class RobotPathVisualizer:
     """

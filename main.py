@@ -2,30 +2,29 @@ import numpy as np
 import math
 import random
 from collections import deque
+import config
 
-# Map dimensions
-N, M = 20, 20
-
-# Robot configuration
-ROBOTS_POSITIONS = [(5, 0), (0, 5), (0, 15), (5,19)]
+# Import configuration parameters
+N, M = config.MAP_HEIGHT, config.MAP_WIDTH
+ROBOTS_POSITIONS = config.ROBOT_INITIAL_POSITIONS
 R = len(ROBOTS_POSITIONS)
-K = 110  # Number of steps in the generated path
+K = config.PATH_LENGTH
 
 # Energy and communication parameters
-ENERGY_BUDGET = 100  # ℓ: maximum cells each robot can traverse
-COMMUNICATION_RADIUS = 15.0  # R_c: communication radius threshold
-CONNECTIVITY_THRESHOLD = 15.0  # d_threshold: for determining if edge exists
+ENERGY_BUDGET = config.ENERGY_BUDGET
+COMMUNICATION_RADIUS = config.COMMUNICATION_RADIUS
+CONNECTIVITY_THRESHOLD = config.CONNECTIVITY_THRESHOLD
 
 # Objective function weights
-ALPHA = 1.0  # Coverage weight
-BETA = 0.5   # Distance-weighted connectivity weight
-GAMMA = 2.0  # Disconnection penalty weight
-ZETA = 5.0   # Obstacle encounter penalty weight
+ALPHA = config.ALPHA
+BETA = config.BETA
+GAMMA = config.GAMMA
+ZETA = config.ZETA
 
 # Map initialization (0=unexplored, 1=free, 2=obstacle, 3=robot)
 Map = np.zeros((N, M))
 
-MOVES = [(-1, 0), (1, 0), (0, -1), (0, 1), (0, 0)]  # Up, down, left, right, stay
+MOVES = config.MOVES
 
 def movements_to_positions(movements_array, initial_positions):
     """Convert from movement arrays [-> , <- ,..etc] to position paths [(x,y),..]."""
@@ -400,13 +399,21 @@ def visualize_coverage(visited_unexplored, path_array):
 
 
 if __name__ == "__main__":
-    # keep here to avoid circular imports
+    # Import optimization algorithm and visualization
+    # NOTE: SimulatedAnnealing inherits from optimization.base_optimizer.BaseOptimizer
+    # NOTE: OptimizationVisualizer inherits from optimization.base_visualizer.BaseVisualizer
     from simulated_annealing import SimulatedAnnealing
     from visualization import OptimizationVisualizer
     import threading
 
     print("\n" + "="*70)
     print("  MULTI-ROBOT PATH PLANNING - SIMULATED ANNEALING OPTIMIZATION")
+    print("="*70)
+    print("\nArchitecture:")
+    print("  - BaseOptimizer: Abstract class for all optimization algorithms")
+    print("  - BaseVisualizer: Abstract class for all visualizers")
+    print("  - SimulatedAnnealing extends BaseOptimizer")
+    print("  - OptimizationVisualizer extends BaseVisualizer")
     print("="*70)
     
     # Create visualization window
@@ -420,7 +427,7 @@ if __name__ == "__main__":
         beta=BETA,
         gamma=GAMMA,
         zeta=ZETA,
-        visualization_step_size=10  # Can be changed to skip frames (e.g., 2, 5, 10)
+        visualization_step_size=config.VISUALIZATION_STEP_SIZE
     )
     
     # Generate initial feasible path and convert it to movements
@@ -431,7 +438,13 @@ if __name__ == "__main__":
     # Run optimization in a separate thread so GUI remains responsive
     def run_optimization():
         # Run Simulated Annealing Optimization with visualization
-        sa = SimulatedAnnealing(visualizer=viz)
+        sa = SimulatedAnnealing(
+            initial_temperature=config.SA_INITIAL_TEMPERATURE,
+            cooling_rate=config.SA_COOLING_RATE,
+            min_temperature=config.SA_MIN_TEMPERATURE,
+            max_iterations=config.SA_MAX_ITERATIONS,
+            visualizer=viz
+        )
         best_movements, best_cost = sa.run(initial_movements)
         
         # Convert best movements back to path

@@ -7,19 +7,48 @@ from main import (
     ROBOTS_POSITIONS,
     K,
 )
+from optimization.base_optimizer import BaseOptimizer
 
-class SimulatedAnnealing:
-    def __init__(self, initial_temperature=100.0, cooling_rate=0.995, min_temperature=0.5, max_iterations=5000, visualizer=None):
+
+class SimulatedAnnealing(BaseOptimizer):
+    """
+    Simulated Annealing optimization algorithm for multi-robot path planning.
+    
+    This algorithm uses a probabilistic approach to escape local optima by
+    accepting worse solutions with a temperature-dependent probability.
+    """
+    
+    def __init__(self, initial_temperature=100.0, cooling_rate=0.995, 
+                 min_temperature=0.5, max_iterations=5000, visualizer=None):
+        """
+        Initialize Simulated Annealing optimizer.
+        
+        Args:
+            initial_temperature (float): Starting temperature for annealing
+            cooling_rate (float): Rate at which temperature decreases (0 < rate < 1)
+            min_temperature (float): Minimum temperature threshold for stopping
+            max_iterations (int): Maximum number of iterations
+            visualizer: Optional visualization object
+        """
+        super().__init__(max_iterations=max_iterations, visualizer=visualizer)
         self.initial_temperature = initial_temperature 
         self.cooling_rate = cooling_rate
         self.min_temperature = min_temperature
-        self.max_iterations = max_iterations
-        self.visualizer = visualizer  # Optional visualization object
+        self.current_temperature = initial_temperature
 
     def generate_neighbor(self, movements_array, max_retries=20):
         """
         Generate a neighboring solution by randomly modifying movements.
+        
+        Implementation of abstract method from BaseOptimizer.
         Tries up to max_retries to find a feasible neighbor.
+        
+        Args:
+            movements_array: Current movement array solution
+            max_retries (int): Maximum attempts to find feasible neighbor
+            
+        Returns:
+            np.ndarray: Neighboring movement array
         """
         for _ in range(max_retries):
             new_movements = [list(m) for m in movements_array]  # Copy current movements
@@ -41,15 +70,51 @@ class SimulatedAnnealing:
         print("Warning: Could not find feasible solution  after max retries.")
         return movements_array
 
+    def acceptance_criterion(self, current_cost, new_cost):
+        """
+        Determine whether to accept a new solution using Metropolis criterion.
+        
+        Implementation of abstract method from BaseOptimizer.
+        Accepts improvements always, and accepts worse solutions with
+        probability exp((new_cost - current_cost) / T).
+        
+        Args:
+            current_cost (float): Cost of current solution
+            new_cost (float): Cost of candidate solution
+            
+        Returns:
+            bool: True if new solution should be accepted
+        """
+        if new_cost > current_cost:
+            return True
+        else:
+            # Probabilistic acceptance for worse solutions
+            acceptance_probability = np.exp((new_cost - current_cost) / self.current_temperature)
+            return random.random() < acceptance_probability
+
     def run(self, initial_movements):
-        """Perform simulated annealing optimization."""
+        """
+        Perform simulated annealing optimization.
+        
+        Implementation of abstract method from BaseOptimizer.
+        
+        Args:
+            initial_movements: Initial movement array solution
+            
+        Returns:
+            tuple: (best_movements, best_cost)
+        """
         current = initial_movements
         current_path = movements_to_positions(current, ROBOTS_POSITIONS)
         current_cost = cost_function(current_path)
         best_movements, best_cost = current, current_cost
+        self.best_solution = best_movements
+        self.best_cost = best_cost
 
         T = self.initial_temperature
+        self.current_temperature = T
         iteration = 0
+        self.current_iteration = 0
 
         print(f"\n--- Simulated Annealing ---")
         print(f"Initial cost: {current_cost:.2f}")
@@ -59,32 +124,57 @@ class SimulatedAnnealing:
             new_path = movements_to_positions(new, ROBOTS_POSITIONS)
             new_cost = cost_function(new_path)
 
-            # Decide whether to accept the new solution or not
-            if new_cost > current_cost or random.random() < np.exp((new_cost - current_cost) / T):
+            # Use the acceptance criterion method
+            if self.acceptance_criterion(current_cost, new_cost):
                 current, current_cost = new, new_cost
                 if new_cost > best_cost:
                     best_movements, best_cost = new, new_cost
+                    self.best_solution = best_movements
+                    self.best_cost = best_cost
 
-            # Update visualization if available
-            if self.visualizer is not None:
-                best_path = movements_to_positions(best_movements, ROBOTS_POSITIONS)
-                current_path_viz = movements_to_positions(current, ROBOTS_POSITIONS)
-                self.visualizer.update_optimization(iteration, T, current_cost, best_cost, best_path, current_path_viz)
-                
-                # Wait for the visualization to finish animating before computing next iteration
-                self.visualizer.wait_for_animation_complete()
+            # Update visualization using base class method
+            self.update_visualization(
+                iteration=iteration,
+                temperature=T,
+                current_cost=current_cost,
+                best_cost=best_cost,
+                best_path=movements_to_positions(best_movements, ROBOTS_POSITIONS),
+                current_path=movements_to_positions(current, ROBOTS_POSITIONS)
+            )
+            
+            # Wait for visualization using base class method
+            self.wait_for_visualization()
 
             # Cool down the temperature using geometric cooling schedule
             T *= self.cooling_rate
+            self.current_temperature = T
             iteration += 1
+            self.current_iteration = iteration
 
             if iteration % 10 == 0:
                 print(f"Iter {iteration:4d} | Temp: {T:6.3f} | Current: {current_cost:7.2f} | Best: {best_cost:7.2f}")
 
-        # Notify visualization that optimization is complete
-        if self.visualizer is not None:
-            self.visualizer.finish_optimization()
+        # Notify visualization that optimization is complete using base class method
+        self.finish_optimization()
 
         print("\n--- Optimization Complete ---")
         print(f"Best cost found: {best_cost:.2f}")
         return best_movements, best_cost
+    
+    def get_hyperparameters(self):
+        """
+        Get SA-specific hyperparameters.
+        
+        Overrides base class method to include SA-specific parameters.
+        
+        Returns:
+            dict: Dictionary of hyperparameter names and values
+        """
+        params = super().get_hyperparameters()
+        params.update({
+            'initial_temperature': self.initial_temperature,
+            'cooling_rate': self.cooling_rate,
+            'min_temperature': self.min_temperature,
+            'current_temperature': self.current_temperature
+        })
+        return params
