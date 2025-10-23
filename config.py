@@ -18,10 +18,12 @@ ROBOT_INITIAL_POSITIONS = [
     (0, 5),   # Robot 2
     (0, 15),  # Robot 3
     (5, 19),  # Robot 4
+    (19, 5),  # Robot 5
+    (15, 19)  # Robot 6
 ]
 
 # Path length (number of steps)
-PATH_LENGTH = 130
+PATH_LENGTH = 125
 
 
 # ============================================================================
@@ -44,15 +46,15 @@ CONNECTIVITY_THRESHOLD = 15.0
 
 # Coverage weight (higher = prioritize exploration)
 # Used as: α / Coverage
-ALPHA = 300 
+ALPHA = 3000
 
 # Connectivity weight (higher = prioritize staying connected)
 # Used as: β / Connectivity
-BETA = 100 
+BETA = 500
 
 # Disconnection penalty weight (higher = stronger penalty for network splits)
 # Used as: γ * P_disconnect
-GAMMA = 4.0 
+GAMMA = 4.0
 
 # Note: Obstacle avoidance is handled by hard constraints in is_feasible()
 # ZETA parameter has been removed as obstacles are now strictly forbidden
@@ -66,10 +68,10 @@ GAMMA = 4.0
 SA_INITIAL_TEMPERATURE = 10.0 # to explore more at the start
 
 # Cooling rate (0 < rate < 1, closer to 1 = slower cooling)
-SA_COOLING_RATE = 0.995 
+SA_COOLING_RATE = 0.995
 
 # Minimum temperature threshold for stopping
-SA_MIN_TEMPERATURE = 0.1 
+SA_MIN_TEMPERATURE = 0.1
 
 # Maximum number of iterations
 SA_MAX_ITERATIONS = 5000
