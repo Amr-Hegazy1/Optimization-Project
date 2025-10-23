@@ -81,6 +81,9 @@ SA_MAX_ITERATIONS = 5000
 # VISUALIZATION PARAMETERS
 # ============================================================================
 
+# Enable/disable real-time visualization (set to False for faster optimization)
+ENABLE_VISUALIZATION = False
+
 # Animation step size (1 = show every step, higher = skip frames for faster animation)
 VISUALIZATION_STEP_SIZE = 1000
 
