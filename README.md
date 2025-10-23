@@ -29,7 +29,7 @@ All parameters are centralized in `config.py` for easy customization:
 **Environment:**
 - `MAP_WIDTH, MAP_HEIGHT`: Map dimensions (default: 20×20)
 - `ROBOT_INITIAL_POSITIONS`: Starting positions for each robot
-- `PATH_LENGTH`: Number of steps in generated paths (default: 110)
+- `PATH_LENGTH`: Number of steps in generated paths (default: 130)
 
 **Constraints:**
 - `ENERGY_BUDGET`: Maximum distance per robot (default: 100)
@@ -37,20 +37,24 @@ All parameters are centralized in `config.py` for easy customization:
 - `CONNECTIVITY_THRESHOLD`: Network connectivity threshold (default: 15.0)
 
 **Objective Weights:**
-- `ALPHA`: Coverage weight (default: 1.0)
-- `BETA`: Connectivity weight (default: 0.5)
-- `GAMMA`: Disconnection penalty (default: 2.0)
-- `ZETA`: Obstacle penalty (default: 5.0)
+- `ALPHA`: Coverage weight (default: 300)
+- `BETA`: Connectivity weight (default: 100)
+- `GAMMA`: Disconnection penalty (default: 4.0)
 
 **Simulated Annealing:**
-- `SA_INITIAL_TEMPERATURE`: Starting temperature (default: 100.0)
+- `SA_INITIAL_TEMPERATURE`: Starting temperature (default: 10.0)
 - `SA_COOLING_RATE`: Temperature reduction rate (default: 0.995)
-- `SA_MIN_TEMPERATURE`: Stopping threshold (default: 0.5)
+- `SA_MIN_TEMPERATURE`: Stopping threshold (default: 0.1)
 - `SA_MAX_ITERATIONS`: Maximum iterations (default: 5000)
 
 **Visualization:**
-- `VISUALIZATION_STEP_SIZE`: Animation frame skipping (default: 1)
-- `ANIMATION_SPEED_MS`: Milliseconds per frame (default: 50)
+- `ENABLE_VISUALIZATION`: Enable/disable GUI (default: True)
+- `FAST_MODE`: Run optimization at full speed, then replay visualization (default: True)
+  - When `True`: Optimization runs 100-1000x faster, visualization replays after completion
+  - When `False`: Real-time visualization during optimization (slower but interactive)
+- `FAST_MODE_UPDATE_INTERVAL`: Update GUI every N iterations during replay (default: 10)
+  - Higher values = faster replay, lower values = smoother animation
+- `VISUALIZATION_STEP_SIZE`: Animation frame skipping (default: 10)
 
 ## Project Structure
 

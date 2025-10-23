@@ -456,6 +456,13 @@ if __name__ == "__main__":
             max_iterations=config.SA_MAX_ITERATIONS,
             visualizer=viz
         )
+        
+        # Enable fast mode if configured
+        if config.ENABLE_VISUALIZATION and hasattr(config, 'FAST_MODE') and config.FAST_MODE:
+            sa.fast_mode = True
+            print("\nFast Mode enabled - optimization will run at full speed")
+            print("Visualization will replay after optimization completes\n")
+        
         best_movements, best_cost = sa.run(initial_movements)
         
         # Convert best movements back to path

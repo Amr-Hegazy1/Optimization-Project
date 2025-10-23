@@ -50,13 +50,6 @@ class OptimizationVisualizer(BaseVisualizer):
         super().__init__(initial_positions, map_grid, communication_radius, 
                         connectivity_threshold, alpha, beta, gamma, 
                         visualization_step_size)
-        
-        # Set animation speed from config if available
-        try:
-            import config
-            self.animation_speed = config.ANIMATION_SPEED_MS
-        except (ImportError, AttributeError):
-            pass  # Use default from base class
     
     def get_algorithm_name(self):
         """Return the algorithm name for display."""
@@ -246,10 +239,13 @@ class OptimizationVisualizer(BaseVisualizer):
             status_text = "Status: Waiting for optimization to start..."
         else:
             prefix = "Status: ✓ Optimization Complete!" if final else "Status: Optimizing..."
+            iter_value = self.display_iteration if self.display_iteration is not None else self.iterations[-1]
+            temp_value = self.display_temperature if self.display_temperature is not None else self.temperatures[-1]
+            cost_value = self.display_best_cost if self.display_best_cost is not None else self.best_costs[-1]
             status_text = (
-                f"{prefix} | Iteration: {self.display_iteration or self.iterations[-1]} | "
-                f"Temperature: {(self.display_temperature if self.display_temperature is not None else self.temperatures[-1]):.2f} | "
-                f"Best Cost: {(self.display_best_cost if self.display_best_cost is not None else self.best_costs[-1]):.6f}"
+                f"{prefix} | Iter: {iter_value} | "
+                f"Temp: {temp_value:.2f} | "
+                f"Best Cost: {cost_value:.6f}"
             )
             if final and final_coverage is not None:
                 status_text += f" | Final Coverage: {final_coverage:.1f}%"

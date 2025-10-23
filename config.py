@@ -82,13 +82,19 @@ SA_MAX_ITERATIONS = 5000
 # ============================================================================
 
 # Enable/disable real-time visualization (set to False for faster optimization)
-ENABLE_VISUALIZATION = False
+ENABLE_VISUALIZATION = True
+
+# Fast mode: Run optimization at full speed, then replay visualization afterwards
+# When True: No real-time visualization updates during optimization, much faster
+# When False: Real-time visualization during optimization (slower but interactive)
+FAST_MODE = True
+
+# Fast mode replay: Update GUI every N iterations (higher = faster replay, lower = smoother)
+# Only used when FAST_MODE = True
+FAST_MODE_UPDATE_INTERVAL = 10
 
 # Animation step size (1 = show every step, higher = skip frames for faster animation)
-VISUALIZATION_STEP_SIZE = 1000
-
-# Initial animation speed in milliseconds per frame
-ANIMATION_SPEED_MS = 50
+VISUALIZATION_STEP_SIZE = 10
 
 
 # ============================================================================

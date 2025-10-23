@@ -67,7 +67,6 @@ class BaseVisualizer(ABC):
         # Animation state
         self.current_solution_path = None
         self.animation_step = 0
-        self.animation_speed = 50  # milliseconds per step (can be overridden by config)
         self.is_animating = False
         self.pending_current_path = None
         self.pending_best_path = None
@@ -81,6 +80,11 @@ class BaseVisualizer(ABC):
         # Synchronization
         self.animation_complete = True
         self.waiting_for_animation = False
+        
+        # Fast mode replay
+        self.is_replaying = False
+        self.replay_index = 0
+        self.replay_history = []
         
         # Robot visualization
         self.current_robot_markers = []
@@ -140,55 +144,29 @@ class BaseVisualizer(ABC):
     
     def _create_control_panel(self, parent):
         """Create control panel with animation controls."""
-        control_frame = ttk.LabelFrame(parent, text="Animation Controls", padding=10)
+        control_frame = ttk.LabelFrame(parent, text="Visualization Controls", padding=10)
         control_frame.pack(fill=tk.X, pady=(0, 10))
         
-        # Speed control
-        speed_frame = ttk.Frame(control_frame)
-        speed_frame.pack(fill=tk.X)
-        
-        ttk.Label(speed_frame, text="Animation Speed:", font=('Arial', 10, 'bold')).pack(side=tk.LEFT, padx=(0, 10))
-        
-        self.slower_btn = ttk.Button(speed_frame, text="◄◄ Slower", 
-                                     command=self._slower_animation, width=12)
-        self.slower_btn.pack(side=tk.LEFT, padx=5)
-        
-        self.speed_display = tk.Label(speed_frame, 
-                                     text=f"{self.animation_speed} ms/frame",
-                                     font=('Arial', 10),
-                                     bg='#f0f0f0',
-                                     width=15,
-                                     relief=tk.SUNKEN,
-                                     bd=2)
-        self.speed_display.pack(side=tk.LEFT, padx=5)
-        
-        self.faster_btn = ttk.Button(speed_frame, text="Faster ►►", 
-                                     command=self._faster_animation, width=12)
-        self.faster_btn.pack(side=tk.LEFT, padx=5)
-        
-        self.reset_speed_btn = ttk.Button(speed_frame, text="Reset Speed", 
-                                          command=self._reset_speed, width=12)
-        self.reset_speed_btn.pack(side=tk.LEFT, padx=5)
+        # Control frame
+        controls_frame = ttk.Frame(control_frame)
+        controls_frame.pack(fill=tk.X)
         
         # Network toggle
         self.show_network_var = tk.BooleanVar(value=True)
-        self.network_checkbox = ttk.Checkbutton(speed_frame, 
+        self.network_checkbox = ttk.Checkbutton(controls_frame, 
                                                 text="Show Network Connections",
                                                 variable=self.show_network_var,
                                                 command=self._toggle_network)
-        self.network_checkbox.pack(side=tk.LEFT, padx=20)
+        self.network_checkbox.pack(side=tk.LEFT, padx=(0, 20))
         
         # Step size control
-        step_size_frame = ttk.Frame(control_frame)
-        step_size_frame.pack(fill=tk.X, pady=(10, 0))
+        ttk.Label(controls_frame, text="Visualization Step Size:", font=('Arial', 10, 'bold')).pack(side=tk.LEFT, padx=(20, 10))
         
-        ttk.Label(step_size_frame, text="Visualization Step Size:", font=('Arial', 10, 'bold')).pack(side=tk.LEFT, padx=(0, 10))
-        
-        self.decrease_step_btn = ttk.Button(step_size_frame, text="◄ Decrease", 
+        self.decrease_step_btn = ttk.Button(controls_frame, text="◄ Decrease", 
                                             command=self._decrease_step_size, width=12)
         self.decrease_step_btn.pack(side=tk.LEFT, padx=5)
         
-        self.step_size_display = tk.Label(step_size_frame, 
+        self.step_size_display = tk.Label(controls_frame, 
                                          text=f"Step: {self.visualization_step_size}",
                                          font=('Arial', 10),
                                          bg='#f0f0f0',
@@ -197,12 +175,13 @@ class BaseVisualizer(ABC):
                                          bd=2)
         self.step_size_display.pack(side=tk.LEFT, padx=5)
         
-        self.increase_step_btn = ttk.Button(step_size_frame, text="Increase ►", 
+        self.increase_step_btn = ttk.Button(controls_frame, text="Increase ►", 
                                             command=self._increase_step_size, width=12)
         self.increase_step_btn.pack(side=tk.LEFT, padx=5)
         
-        self.reset_step_size_btn = ttk.Button(step_size_frame, text="Reset Step", 
+        self.reset_step_size_btn = ttk.Button(controls_frame, text="Reset Step", 
                                               command=self._reset_step_size, width=12)
+        self.reset_step_size_btn.pack(side=tk.LEFT, padx=5)
         self.reset_step_size_btn.pack(side=tk.LEFT, padx=5)
     
     @abstractmethod
@@ -253,8 +232,8 @@ class BaseVisualizer(ABC):
         
         # Coverage plot
         ax_coverage = fig.add_subplot(gs[0, 2])
-        ax_coverage.set_title('Coverage Over Time (Current Solution)', fontsize=12, fontweight='bold', pad=10)
-        ax_coverage.set_xlabel('Time Step', fontsize=10)
+        ax_coverage.set_title('Coverage Over Iterations', fontsize=12, fontweight='bold', pad=10)
+        ax_coverage.set_xlabel('Iteration', fontsize=10)
         ax_coverage.set_ylabel('Coverage (%)', fontsize=10)
         ax_coverage.grid(True, alpha=0.3, linestyle='--')
         ax_coverage.set_ylim(0, 100)
@@ -368,6 +347,17 @@ class BaseVisualizer(ABC):
             best_cost: cost of best solution found
             best_path: best path array found
             current_path: current path array (optional)
+        """
+        pass
+    
+    @abstractmethod
+    def _update_plots(self):
+        """
+        Update algorithm-specific plots with current data.
+        
+        This method should update all plots (objective function, temperature, etc.)
+        based on the stored data (self.iterations, self.current_costs, etc.).
+        Called during both real-time updates and fast mode replay.
         """
         pass
     
@@ -529,7 +519,8 @@ class BaseVisualizer(ABC):
             
             self.canvas.draw_idle()
             self.animation_step += self.visualization_step_size
-            self.root.after(self.animation_speed, self._animate_solutions)
+            # Use a fixed delay of 50ms per animation frame
+            self.root.after(50, self._animate_solutions)
         else:
             self.animation_step = 0
             self.is_animating = False
@@ -695,6 +686,269 @@ class BaseVisualizer(ABC):
         self._update_status_bar(final=True, final_coverage=final_coverage)
         self.canvas.draw()
     
+    def replay_optimization_history(self, history):
+        """
+        Replay optimization history in fast mode after optimization completes.
+        
+        Args:
+            history (list): List of kwargs dictionaries from update_visualization calls
+        """
+        if not history:
+            # No history to replay, just finish normally
+            self.finish_optimization()
+            return
+        
+        # Get update interval from config
+        try:
+            import config
+            update_interval = config.FAST_MODE_UPDATE_INTERVAL if hasattr(config, 'FAST_MODE_UPDATE_INTERVAL') else 10
+        except ImportError:
+            update_interval = 10
+        
+        print(f"\n--- Fast Mode: Replaying {len(history)} optimization steps ---")
+        print(f"Updating GUI every {update_interval} iterations")
+        self._update_status_bar_text(f"Fast Mode: Replaying optimization history (update every {update_interval} iterations)...")
+        
+        # Reset coverage data for replay
+        self.current_coverage_data = []
+        
+        # Replay history with automatic animation
+        self.replay_index = 0
+        self.replay_history = history
+        self.replay_update_interval = update_interval
+        self.is_replaying = True
+        
+        # Start replay animation
+        self._replay_next_step()
+    
+    def _replay_next_step(self):
+        """Replay the next step in the optimization history."""
+        if self.replay_index >= len(self.replay_history):
+            # Replay complete
+            self.is_replaying = False
+            print("--- Fast Mode Replay Complete ---")
+            self.finish_optimization()
+            return
+        
+        # Get next history entry
+        kwargs = self.replay_history[self.replay_index]
+        self.replay_index += 1
+        
+        # Always update the data (for all iterations)
+        # This ensures plots have complete data even if we skip some GUI updates
+        if hasattr(self, 'temperatures') and 'temperature' in kwargs:
+            # SA-specific: track temperature
+            if self.initial_temperature is None:
+                self.initial_temperature = kwargs.get('temperature')
+            self.temperatures.append(kwargs.get('temperature'))
+        
+        # Update common tracking data
+        iteration = kwargs.get('iteration')
+        current_cost = kwargs.get('current_cost')
+        best_cost = kwargs.get('best_cost')
+        best_path = kwargs.get('best_path')
+        current_path = kwargs.get('current_path')
+        
+        if iteration is not None:
+            self.iterations.append(iteration)
+        if current_cost is not None:
+            self.current_costs.append(current_cost)
+        if best_cost is not None:
+            self.best_costs.append(best_cost)
+        if best_path is not None:
+            self.best_path = best_path
+            self.best_cost = best_cost
+        
+        # Update display state
+        self.display_iteration = iteration
+        self.display_current_cost = current_cost
+        self.display_best_cost = best_cost
+        if hasattr(self, 'display_temperature') and 'temperature' in kwargs:
+            self.display_temperature = kwargs.get('temperature')
+        
+        # Only trigger full GUI update (with animation) every N iterations
+        should_update_gui = (self.replay_index % self.replay_update_interval == 0 or 
+                            self.replay_index == len(self.replay_history))
+        
+        if should_update_gui:
+            # Update plots first
+            self._update_plots()
+            
+            # For fast mode replay, show final state without animation
+            # This is faster and still shows progress
+            if current_path is not None:
+                self.current_solution_path = current_path
+                # Show final state of current solution
+                self._update_map_snapshot(
+                    current_path,
+                    self.ax_current,
+                    "Current Solution",
+                    self.current_robot_markers,
+                    self.current_robot_trails,
+                    self.current_robot_texts,
+                    self.current_visited,
+                    self.current_network_lines
+                )
+            
+            if best_path is not None:
+                self.best_path = best_path
+                # Show final state of best solution
+                self._update_map_snapshot(
+                    best_path,
+                    self.ax_best,
+                    "Best Solution So Far",
+                    self.best_robot_markers,
+                    self.best_robot_trails,
+                    self.best_robot_texts,
+                    self.best_visited,
+                    self.best_network_lines
+                )
+            
+            # Update coverage data for current solution
+            if current_path is not None:
+                # Count unique visited unexplored cells
+                visited_cells = set()
+                for r in range(self.R):
+                    for pos in current_path[r]:
+                        pos_tuple = tuple(pos) if isinstance(pos, np.ndarray) else pos
+                        if self.map_grid[pos_tuple[0], pos_tuple[1]] == 0:
+                            visited_cells.add(pos_tuple)
+                
+                coverage_pct = (len(visited_cells) / (self.N * self.M)) * 100
+                
+                # Update coverage plot - use iteration count as x-axis
+                if iteration is not None:
+                    self.current_coverage_data.append((iteration, coverage_pct))
+                    if self.current_coverage_data and hasattr(self, 'coverage_line'):
+                        iters, coverages = zip(*self.current_coverage_data)
+                        self.coverage_line.set_data(iters, coverages)
+                        self.ax_coverage.relim()
+                        self.ax_coverage.autoscale_view()
+                        # Update x-axis label
+                        self.ax_coverage.set_xlabel('Iteration', fontsize=10)
+            
+            # Force canvas redraw
+            self.canvas.draw_idle()
+            
+            # Schedule next step with delay to allow GUI to update
+            self.root.after(10, self._replay_next_step)
+        else:
+            # Skip GUI update but update plots without animation
+            # Only update plots every N/10 iterations to avoid overhead
+            if self.replay_index % max(1, self.replay_update_interval // 10) == 0:
+                self._update_plots()
+            
+            # Continue with next step using after to avoid stack overflow
+            self.root.after(0, self._replay_next_step)
+    
+    def _update_status_bar_text(self, text):
+        """Update status bar with custom text."""
+        if hasattr(self, 'status_label'):
+            self.status_label.config(text=f"Status: {text}")
+    
+    def _update_map_snapshot(self, path_array, ax, title, markers, trails, texts, visited_set, network_lines):
+        """
+        Update map to show final state of a path without animation.
+        Used during fast mode replay for quick updates.
+        """
+        if path_array is None or len(path_array) == 0:
+            return
+        
+        K = len(path_array[0])
+        final_step = K - 1
+        
+        # Clear existing markers and trails
+        for marker in markers:
+            if marker is not None:
+                try:
+                    marker.remove()
+                except:
+                    pass
+        for trail in trails:
+            if trail is not None:
+                try:
+                    trail.remove()
+                except:
+                    pass
+        for text in texts:
+            if text is not None:
+                try:
+                    text.remove()
+                except:
+                    pass
+        for line in network_lines:
+            try:
+                line.remove()
+            except:
+                pass
+        
+        markers.clear()
+        trails.clear()
+        texts.clear()
+        network_lines.clear()
+        visited_set.clear()
+        
+        # Redraw map
+        self._initialize_map_view(ax, title)
+        
+        # Track visited cells first
+        for r in range(self.R):
+            path_r = path_array[r]
+            for pos in path_r[:final_step+1]:
+                pos_tuple = tuple(pos) if isinstance(pos, np.ndarray) else pos
+                if self.map_grid[pos_tuple[0], pos_tuple[1]] == 0:
+                    visited_set.add(pos_tuple)
+        
+        # Draw visited cells as green rectangles
+        for (i, j) in visited_set:
+            rect = Rectangle((j-0.5, i-0.5), 1, 1, 
+                           facecolor='#90EE90', edgecolor='#e0e0e0', 
+                           linewidth=0.3, alpha=0.6, zorder=2)
+            ax.add_patch(rect)
+        
+        # Draw complete trails for all robots
+        for r in range(self.R):
+            path_r = path_array[r]
+            # Draw trail
+            trail_x = [pos[1] for pos in path_r[:final_step+1]]
+            trail_y = [pos[0] for pos in path_r[:final_step+1]]
+            trail_line, = ax.plot(trail_x, trail_y, '-', 
+                                 color=self.robot_colors[r], 
+                                 linewidth=2, alpha=0.6, zorder=5)
+            trails.append(trail_line)
+            
+            # Draw final position
+            if final_step < len(path_r):
+                final_pos = path_r[final_step]
+                y, x = final_pos[1], final_pos[0]
+                circle = Circle((y, x), 0.4, color=self.robot_colors[r], 
+                              ec='black', linewidth=2, zorder=15)
+                ax.add_patch(circle)
+                markers.append(circle)
+                
+                # Add robot label
+                text_obj = ax.text(y, x, f'R{r+1}', 
+                                  ha='center', va='center', 
+                                  fontsize=8, fontweight='bold',
+                                  color='white', zorder=20)
+                texts.append(text_obj)
+        
+        # Draw network connections at final step
+        if self.show_network_var.get() and final_step < K:
+            positions_t = [path_array[r][final_step] if final_step < len(path_array[r]) 
+                          else path_array[r][-1] for r in range(self.R)]
+            
+            for i in range(self.R):
+                for j in range(i + 1, self.R):
+                    pos_i = positions_t[i]
+                    pos_j = positions_t[j]
+                    dist = np.sqrt((pos_i[0] - pos_j[0])**2 + (pos_i[1] - pos_j[1])**2)
+                    
+                    if dist <= self.communication_radius:
+                        line, = ax.plot([pos_i[1], pos_j[1]], [pos_i[0], pos_j[0]], 
+                                       'g--', alpha=0.3, linewidth=1.5, zorder=3)
+                        network_lines.append(line)
+    
     def show(self):
         """Display the visualization window."""
         self.root.mainloop()
@@ -715,26 +969,6 @@ class BaseVisualizer(ABC):
         pass
     
     # Animation control methods
-    def _slower_animation(self):
-        """Slow down animation speed."""
-        self.animation_speed = min(500, self.animation_speed + 25)
-        self.speed_display.config(text=f"{self.animation_speed} ms/frame")
-    
-    def _faster_animation(self):
-        """Speed up animation speed."""
-        if self.animation_speed > 50:
-            self.animation_speed = max(1, self.animation_speed - 25)
-        elif self.animation_speed > 10:
-            self.animation_speed = max(1, self.animation_speed - 10)
-        else:
-            self.animation_speed = max(1, self.animation_speed - 1)
-        self.speed_display.config(text=f"{self.animation_speed} ms/frame")
-    
-    def _reset_speed(self):
-        """Reset animation speed to default."""
-        self.animation_speed = 50
-        self.speed_display.config(text=f"{self.animation_speed} ms/frame")
-    
     def _toggle_network(self):
         """Toggle network connections visibility."""
         pass

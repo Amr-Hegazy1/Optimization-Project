@@ -35,6 +35,10 @@ class BaseOptimizer(ABC):
         self.best_solution = None
         self.best_cost = np.inf  # Initialize to infinity for minimization
         
+        # History tracking for fast mode replay
+        self.optimization_history = []
+        self.fast_mode = False
+        
     @abstractmethod
     def run(self, initial_solution):
         """
@@ -93,7 +97,10 @@ class BaseOptimizer(ABC):
         Args:
             **kwargs: Algorithm-specific visualization parameters
         """
-        if self.visualizer is not None:
+        if self.fast_mode:
+            # In fast mode, store history instead of updating visualization
+            self.optimization_history.append(kwargs.copy())
+        elif self.visualizer is not None:
             self.visualizer.update_optimization(**kwargs)
     
     def wait_for_visualization(self):
@@ -102,6 +109,9 @@ class BaseOptimizer(ABC):
         
         This ensures synchronization between optimization and visualization.
         """
+        if self.fast_mode:
+            # In fast mode, don't wait for visualization
+            return
         if self.visualizer is not None and hasattr(self.visualizer, 'wait_for_animation_complete'):
             self.visualizer.wait_for_animation_complete()
     
@@ -111,7 +121,11 @@ class BaseOptimizer(ABC):
         
         This allows the visualizer to update its state and display final results.
         """
-        if self.visualizer is not None and hasattr(self.visualizer, 'finish_optimization'):
+        if self.fast_mode and self.visualizer is not None:
+            # In fast mode, replay the optimization history
+            if hasattr(self.visualizer, 'replay_optimization_history'):
+                self.visualizer.replay_optimization_history(self.optimization_history)
+        elif self.visualizer is not None and hasattr(self.visualizer, 'finish_optimization'):
             self.visualizer.finish_optimization()
     
     def get_algorithm_name(self):
