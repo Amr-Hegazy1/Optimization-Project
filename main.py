@@ -9,6 +9,7 @@ N, M = config.MAP_HEIGHT, config.MAP_WIDTH
 ROBOTS_POSITIONS = config.ROBOT_INITIAL_POSITIONS
 R = len(ROBOTS_POSITIONS)
 K = config.PATH_LENGTH
+V = config.ROBOT_VISION
 
 # Energy and communication parameters
 ENERGY_BUDGET = config.ENERGY_BUDGET
@@ -22,9 +23,36 @@ GAMMA = config.GAMMA
 # Note: ZETA removed - obstacles handled by hard constraints
 
 # Map initialization (0=unexplored, 1=free, 2=obstacle, 3=robot)
-Map = np.zeros((N, M))
 
 MOVES = config.MOVES
+
+PHYSICAL_MAP = config.PHYSICAL_MAP
+
+
+def init_map():
+    """
+    Initialize the map using Manhattan distance for vision range.
+    Only cells within Manhattan distance V are visible.
+    
+    Returns:
+        numpy.ndarray: Initialized map
+    """
+    map_grid = np.zeros((N, M), dtype=int)
+    
+    for robot_y, robot_x in ROBOTS_POSITIONS:
+        for dy in range(-V, V + 1):
+            for dx in range(-V, V + 1):
+                # Check Manhattan distance
+                if abs(dy) + abs(dx) <= V:
+                    cell_y = robot_y + dy
+                    cell_x = robot_x + dx
+                    
+                    if 0 <= cell_y < N and 0 <= cell_x < M:
+                        map_grid[cell_y, cell_x] = PHYSICAL_MAP[cell_y, cell_x]
+    
+    return map_grid
+
+MAP = init_map
 
 def movements_to_positions(movements_array, initial_positions):
     """Convert from movement arrays [-> , <- ,..etc] to position paths [(x,y),..]."""
@@ -238,7 +266,7 @@ def compute_obstacle_penalty(path_array):
     for r in range(R):
         for t in range(K):
             x, y = path_array[r][t]
-            if Map[x, y] == 2:  # Obstacle
+            if MAP[x, y] == 2:  # Obstacle
                 penalty += 1
     
     return penalty
@@ -289,7 +317,7 @@ def is_feasible(path_array):
                 return False
             
             # 4. Obstacle avoidance constraint
-            if Map[x, y] == 2:
+            if MAP[x, y] == 2:
                 return False
             
             # 5. Collision avoidance constraint
@@ -321,7 +349,7 @@ def cost_function(path_array, visualize=False):
     for r in range(R):
         for t in range(K):
             x, y = path_array[r][t]
-            if Map[x, y] == 0:  # Unexplored cell
+            if MAP[x, y] == 0:  # Unexplored cell
                 visited_unexplored.add((x, y))
     
     coverage_count = len(visited_unexplored)
@@ -393,7 +421,7 @@ def visualize_coverage(visited_unexplored, path_array):
                 print(f"R{final_pos[(i, j)]}", end=" ")
             elif (i, j) in visited_unexplored:
                 print(" *", end=" ")
-            elif Map[i, j] == 2:
+            elif MAP[i, j] == 2:
                 print(" #", end=" ")
             else:
                 print(" .", end=" ")
@@ -430,7 +458,7 @@ if __name__ == "__main__":
         print("\nInitializing visualization...")
         viz = OptimizationVisualizer(
             initial_positions=ROBOTS_POSITIONS,
-            map_grid=Map,
+            map_grid=MAP,
             communication_radius=COMMUNICATION_RADIUS,
             connectivity_threshold=CONNECTIVITY_THRESHOLD,
             alpha=ALPHA,
