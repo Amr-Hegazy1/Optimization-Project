@@ -28,6 +28,7 @@ class GeneticOptimizer(BaseOptimizer):
         self.elite_rate = elite_rate
     
     # TODO: Still needs to handle logic where if an obstacle is encountered, the path is regenerated for rest of K for all robots.
+    # TODO: Make sure to generate initial population that is feasible.
     def run(self, initial_population):
         """
         Perform genetic algorithm optimization.
@@ -142,6 +143,7 @@ class GeneticOptimizer(BaseOptimizer):
         # Create offspring through crossover
         num_crossover = self.population_size - len(new_population)
         offspring_count = 0
+        # TODO: choose the best offspring
         while offspring_count < num_crossover:
             # Select parents
             parent1, parent2 = self.select_parents(solution, fitness_list, 2)
