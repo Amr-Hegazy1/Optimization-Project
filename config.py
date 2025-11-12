@@ -47,7 +47,7 @@ ROBOT_INITIAL_POSITIONS = [
 ]
 
 # Path length (Number of steps)
-PATH_LENGTH = 5
+PATH_LENGTH = 100
 
 # Robot Vision (Number of adjacent cells a robot can see)
 ROBOT_VISION = 1

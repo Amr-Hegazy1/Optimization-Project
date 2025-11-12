@@ -73,13 +73,14 @@ class OptimizationVisualizer(BaseVisualizer):
             top=0.965,
             bottom=0.05,
         )
-        
+        # ! Temperature
         # Top left: Temperature over iterations (SA-specific)
-        self.ax_temp = self.fig.add_subplot(gs[0, 0])
-        self.ax_temp.set_title('Temperature Cooling Schedule', fontsize=13, fontweight='bold', pad=10)
-        self.ax_temp.set_xlabel('Iteration', fontsize=11)
-        self.ax_temp.set_ylabel('Temperature', fontsize=11)
-        self.ax_temp.grid(True, alpha=0.3, linestyle='--')
+
+        # self.ax_temp = self.fig.add_subplot(gs[0, 0])
+        # self.ax_temp.set_title('Temperature Cooling Schedule', fontsize=13, fontweight='bold', pad=10)
+        # self.ax_temp.set_xlabel('Iteration', fontsize=11)
+        # self.ax_temp.set_ylabel('Temperature', fontsize=11)
+        # self.ax_temp.grid(True, alpha=0.3, linestyle='--')
         
         # Bottom left: Cost function evolution (minimization)
         self.ax_obj = self.fig.add_subplot(gs[1, 0])
@@ -105,8 +106,9 @@ class OptimizationVisualizer(BaseVisualizer):
     def _initialize_sa_plots(self):
         """Initialize SA-specific plots (temperature and objective function)."""
         # Temperature plot
-        self.temp_line, = self.ax_temp.plot([], [], 'r-', linewidth=2.5, label='Temperature')
-        self.ax_temp.legend(loc='upper right', fontsize=10)
+        # ! Temperature
+        # self.temp_line, = self.ax_temp.plot([], [], 'r-', linewidth=2.5, label='Temperature')
+        # self.ax_temp.legend(loc='upper right', fontsize=10)
         
         # Objective function plot
         self.current_line, = self.ax_obj.plot([], [], 'b-', linewidth=1.5, alpha=0.7, label='Current Solution')
@@ -146,10 +148,11 @@ class OptimizationVisualizer(BaseVisualizer):
         if len(self.iterations) == 0:
             return
             
-        # Update temperature plot (SA-specific)
-        self.temp_line.set_data(self.iterations, self.temperatures)
-        self.ax_temp.relim()
-        self.ax_temp.autoscale_view()
+        # # Update temperature plot (SA-specific)
+        # ! Temperature
+        # self.temp_line.set_data(self.iterations, self.temperatures)
+        # self.ax_temp.relim()
+        # self.ax_temp.autoscale_view()
         
         # Update objective function plot
         self.current_line.set_data(self.iterations, self.current_costs)
@@ -240,11 +243,13 @@ class OptimizationVisualizer(BaseVisualizer):
         else:
             prefix = "Status: ✓ Optimization Complete!" if final else "Status: Optimizing..."
             iter_value = self.display_iteration if self.display_iteration is not None else self.iterations[-1]
-            temp_value = self.display_temperature if self.display_temperature is not None else self.temperatures[-1]
+            # ! Temperature
+            # temp_value = self.display_temperature if self.display_temperature is not None else self.temperatures[-1]
             cost_value = self.display_best_cost if self.display_best_cost is not None else self.best_costs[-1]
             status_text = (
                 f"{prefix} | Iter: {iter_value} | "
-                f"Temp: {temp_value:.2f} | "
+                # ! Temperature
+                # f"Temp: {temp_value:.2f} | "
                 f"Best Cost: {cost_value:.6f}"
             )
             if final and final_coverage is not None:

@@ -1,4 +1,6 @@
 import random
+
+import numpy as np
 from optimization.base_optimizer import BaseOptimizer
 from main import (
     movements_to_positions,
@@ -42,7 +44,7 @@ class GeneticOptimizer(BaseOptimizer):
     # TODO: Make sure to generate initial population that is feasible.
     def run(
         self,
-        initial_population,
+        initial_solution,
         mutation_method="swap",
         parent_selection_method="sus",
         crossover_method="one_point",
@@ -59,6 +61,11 @@ class GeneticOptimizer(BaseOptimizer):
         Returns:
             tuple: (best_solution, best_cost)
         """
+
+        # generate a population from the initial solution
+        initial_population = self.generate_population(
+            initial_solution, robot_positions=robot_positions
+        )
 
         # Track best solution across all generations
         best_solution = None
@@ -97,8 +104,8 @@ class GeneticOptimizer(BaseOptimizer):
                 iteration=generation_number,
                 current_cost=current_cost,
                 best_cost=best_cost,
-                best_path=movements_to_positions(best_solution, ROBOTS_POSITIONS),
-                current_path=movements_to_positions(current_solution, ROBOTS_POSITIONS),
+                best_path=movements_to_positions(best_solution, robot_positions),
+                current_path=movements_to_positions(current_solution, robot_positions),
             )
 
             # Wait for visualization using base class method
@@ -116,11 +123,24 @@ class GeneticOptimizer(BaseOptimizer):
         print(f"Best cost found: {best_cost:.6f}")
         return best_solution, best_cost
 
+    def generate_population(self, initial_solution, robot_positions=ROBOTS_POSITIONS):
+        initial_population = []
+        initial_population.append(initial_solution)
+        mutated_individual = initial_solution
+        for _ in range(self.population_size - 1):
+            mutated_individual = self.mutate(mutated_individual, mutation_method="swap")
+            while not is_feasible(
+                movements_to_positions(mutated_individual, robot_positions)
+            ):
+                mutated_individual = self.mutate(mutated_individual)
+            initial_population.append(mutated_individual)
+        return initial_population
+
     def get_hyperparameters(self):
         """
-        Get SA-specific hyperparameters.
+        Get GA-specific hyperparameters.
 
-        Overrides base class method to include SA-specific parameters.
+        Overrides base class method to include GA-specific parameters.
 
         Returns:
             dict: Dictionary of hyperparameter names and values
@@ -143,7 +163,7 @@ class GeneticOptimizer(BaseOptimizer):
         solution,
         fitness_list,
         mutation_method="swap",
-        parent_selection_method="SUS",
+        parent_selection_method="sus",
         crossover_method="one_point",
         robot_positions=ROBOTS_POSITIONS,
     ):
@@ -160,24 +180,26 @@ class GeneticOptimizer(BaseOptimizer):
             A neighboring solution
         """
 
-        # ! Take Care: if any non-random way for parent selection and crossover is used, this could lead to infinite loops if no feasible offspring is generated, when adding new crossover or parent selection methods please take care of that. Like for example if always selecting the top 2 fittest individuals as parents and a crossover method that does not produce feasible offsprings from those parents, then the while loop below may never end.
+        # ! Note: if any non-random way for parent selection and crossover is used, this could lead to infinite loops if no feasible offspring is generated, when adding new crossover or parent selection methods please take care of that. Like for example if always selecting the top 2 fittest individuals as parents and a crossover method that does not produce feasible offsprings from those parents, then the while loop below may never end.
 
         # Create new population
         new_population = []
 
         # Choose survivors (elites) to carry over to next generation
-        elites = self.select_survivors(self, fitness_list, solution)
+        elites = self.select_survivors(fitness_list, solution)
 
         new_population.extend(elites)
 
         # Apply mutation to worst individuals
-        worst_individuals = self.select_individuals_for_mutation(
-            self, fitness_list, solution
-        )
+        worst_individuals = self.select_individuals_for_mutation(fitness_list, solution)
 
         for individual in worst_individuals:
-            mutated_individual = self.mutate(individual, mutation_method=mutation_method)
-            while not is_feasible(movements_to_positions(mutated_individual, robot_positions)):
+            mutated_individual = self.mutate(
+                individual, mutation_method=mutation_method
+            )
+            while not is_feasible(
+                movements_to_positions(mutated_individual, robot_positions)
+            ):
                 mutated_individual = self.mutate(individual)
             new_population.append(mutated_individual)
 
@@ -198,14 +220,15 @@ class GeneticOptimizer(BaseOptimizer):
             offspring1, offspring2 = self.crossover(
                 parent1, parent2, crossover_method=crossover_method
             )
-            offsprings_sorted_by_fitness = sorted(
-                [offspring1, offspring2], key=lambda x: self.evaluate_fitness(x)
-            )
-
+            offspring_list = [offspring1, offspring2]
             # this ensures that we only add feasible offsprings to the new population
-            for offspring in offsprings_sorted_by_fitness:
-                if not is_feasible(movements_to_positions(offspring, robot_positions)):
-                    offsprings_sorted_by_fitness.remove(offspring)
+            offspring_list = [
+                offspring for offspring in offspring_list
+                if is_feasible(movements_to_positions(offspring, robot_positions))
+            ]
+            offsprings_sorted_by_fitness = sorted(
+                offspring_list, key=lambda x: self.evaluate_fitness(x)
+            )
 
             if len(offsprings_sorted_by_fitness) != 0:
                 # choose the fittest (lowest cost)
@@ -235,7 +258,6 @@ class GeneticOptimizer(BaseOptimizer):
             float: Fitness value (lower is better for minimization)
         """
         # Calculate objective function value
-        # TODO: The ROBOT Positions would need to be passed here for implementation of logic related to regeneration of path when an obstacle is encountered.
         path = movements_to_positions(solution, robots_positions)
         fitness = cost_function(path)
 
@@ -254,7 +276,7 @@ class GeneticOptimizer(BaseOptimizer):
             sorted_population: Population sorted by fitness (best first)
         """
         # Sort population by fitness values (lower is better)
-        sorted_population = [x for _, x in sorted(zip(fitnesses, population))]
+        sorted_population = [x for _, x in sorted(zip(fitnesses, population), key=lambda pair: pair[0])]
         return sorted_population
 
     def select_survivors(self, fitnesses, population):
@@ -293,7 +315,7 @@ class GeneticOptimizer(BaseOptimizer):
 
     # Select parents using selection method (tournament, roulette, etc.)
     def select_parents(
-        self, population, fitnesses, num_parents, parent_selection_method="SUS"
+        self, population, fitnesses, num_parents, parent_selection_method="sus"
     ):
         """
         Select parent solutions for breeding.
@@ -306,9 +328,13 @@ class GeneticOptimizer(BaseOptimizer):
         Returns:
             list: Selected parent solutions
         """
+
+        epsilon = 1e-10
+        inverse_fitnesses = [1.0 / (f + epsilon) for f in fitnesses]
+
         # Implementing Stochastic Universal Sampling (SUS) as an example
         if parent_selection_method == "sus":
-            return self.select_parents_by_sus(population, fitnesses, num_parents)
+            return self.select_parents_by_sus(population, inverse_fitnesses, num_parents)
         if parent_selection_method == "roulette":
             selected_parents = []
             for _ in range(num_parents):
@@ -323,7 +349,7 @@ class GeneticOptimizer(BaseOptimizer):
 
     def select_parents_by_sus(self, population, fitnesses, num_parents):
         """
-        Stochastic Universal Sampling (SUS) for parent selection.
+        Stochastic Universal Sampling (sus) for parent selection.
 
         Args:
             population: Current population of solutions
@@ -343,7 +369,7 @@ class GeneticOptimizer(BaseOptimizer):
 
         selected_parents = []
         for pointer in pointers:
-            parent = self.selected_parents_by_roulette(population, fitnesses, pointer)
+            parent = self.select_parent_by_roulette(population, fitnesses, pointer)
             selected_parents.append(parent)
         return selected_parents
 
@@ -395,9 +421,8 @@ class GeneticOptimizer(BaseOptimizer):
         length = len(parent1)
         crossover_point = random.randint(1, length - 1)
 
-        offspring1 = parent1[:crossover_point] + parent2[crossover_point:]
-        offspring2 = parent2[:crossover_point] + parent1[crossover_point:]
-
+        offspring1 = np.concatenate([parent1[:crossover_point], parent2[crossover_point:]])
+        offspring2 = np.concatenate([parent2[:crossover_point], parent1[crossover_point:]])
         return offspring1, offspring2
 
     # TODO
@@ -424,6 +449,7 @@ class GeneticOptimizer(BaseOptimizer):
 
         # Return both offspring
         pass
+
     # TODO
     def partially_mapped_crossover(self, parent1, parent2):
         """
@@ -450,6 +476,7 @@ class GeneticOptimizer(BaseOptimizer):
 
         # Return both offspring
         pass
+
     # TODO
     def cycle_crossover(self, parent1, parent2):
         """
@@ -474,6 +501,7 @@ class GeneticOptimizer(BaseOptimizer):
 
         # Return both offspring
         pass
+
     # TODO
     def edge_recombination_crossover(self, parent1, parent2):
         """
@@ -501,8 +529,7 @@ class GeneticOptimizer(BaseOptimizer):
         # Return offspring
         pass
 
-
-    def mutate(self, solution, mutation_method='swap'):
+    def mutate(self, solution, mutation_method="swap"):
         """
         Apply mutation to a solution.
 
@@ -514,12 +541,10 @@ class GeneticOptimizer(BaseOptimizer):
         """
 
         # Implement mutation strategy (swap, insert, inversion, etc.)
-        if mutation_method == 'swap':
+        if mutation_method == "swap":
             return self.swap_mutation(solution)
         else:
-            raise ValueError(
-                f"Unknown mutation method: {mutation_method}"
-            )
+            raise ValueError(f"Unknown mutation method: {mutation_method}")
 
     def swap_mutation(self, solution):
         """
@@ -531,16 +556,21 @@ class GeneticOptimizer(BaseOptimizer):
         Returns:
             Mutated solution
         """
+        mutated = np.copy(solution)
+        
         # Select two random distinct positions
-        position_1 = random.randint(0, len(solution) - 1)
-        position_2 = random.randint(0, len(solution) - 1)
+        position_1 = random.randint(0, len(mutated) - 1)
+        position_2 = random.randint(0, len(mutated) - 1)
         while position_1 == position_2:
-            position_2 = random.randint(0, len(solution) - 1)
+            position_2 = random.randint(0, len(mutated) - 1)
+        
         # Swap elements at those positions
-        solution[position_1], solution[position_2] = solution[position_2], solution[position_1]
-
-        # Return mutated solution
-        return solution
+        mutated[position_1], mutated[position_2] = (
+            mutated[position_2],
+            mutated[position_1],
+        )
+        
+        return mutated
 
     # TODO
     def insert_mutation(self, solution):
@@ -561,6 +591,7 @@ class GeneticOptimizer(BaseOptimizer):
 
         # Return mutated solution
         pass
+
     # TODO
     def inversion_mutation(self, solution):
         """
@@ -578,6 +609,7 @@ class GeneticOptimizer(BaseOptimizer):
 
         # Return mutated solution
         pass
+
     # TODO
     def scramble_mutation(self, solution):
         """
@@ -595,6 +627,7 @@ class GeneticOptimizer(BaseOptimizer):
 
         # Return mutated solution
         pass
+
     # TODO
     def displacement_mutation(self, solution):
         """
@@ -616,6 +649,7 @@ class GeneticOptimizer(BaseOptimizer):
 
         # Return mutated solution
         pass
+
     # TODO
     def two_opt_mutation(self, solution):
         """
@@ -637,6 +671,7 @@ class GeneticOptimizer(BaseOptimizer):
 
         # Return mutated solution
         pass
+
     # TODO
     def adaptive_mutation(self, solution, generation, max_generations):
         """
