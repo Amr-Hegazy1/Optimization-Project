@@ -135,11 +135,14 @@ class GeneticOptimizer(BaseOptimizer):
         )
         return params
 
+    def acceptance_criterion(self, current_cost, new_cost):
+        return super().acceptance_criterion(current_cost, new_cost)
+
     def generate_neighbor(
         self,
         solution,
         fitness_list,
-        mutation_method,
+        mutation_method="swap",
         parent_selection_method="SUS",
         crossover_method="one_point",
         robot_positions=ROBOTS_POSITIONS,
@@ -173,7 +176,9 @@ class GeneticOptimizer(BaseOptimizer):
         )
 
         for individual in worst_individuals:
-            mutated_individual = self.mutate(individual)
+            mutated_individual = self.mutate(individual, mutation_method=mutation_method)
+            while not is_feasible(movements_to_positions(mutated_individual, robot_positions)):
+                mutated_individual = self.mutate(individual)
             new_population.append(mutated_individual)
 
         # Create offspring through crossover
@@ -286,22 +291,6 @@ class GeneticOptimizer(BaseOptimizer):
         sorted_population = self.sort_population_by_fitness(fitnesses, population)
         return sorted_population[-num_to_mutate:]
 
-    def crossover(self, parent1, parent2, crossover_method="one_point"):
-        """
-        Perform crossover between two parent solutions.
-
-        Args:
-            parent1: First parent solution
-            parent2: Second parent solution
-
-        Returns:
-            tuple: (offspring1, offspring2) or single offspring depending on implementation
-        """
-        if crossover_method == "one_point":
-            return self.one_point_crossover(parent1, parent2)
-        else:
-            raise ValueError(f"Unknown crossover method: {crossover_method}")
-
     # Select parents using selection method (tournament, roulette, etc.)
     def select_parents(
         self, population, fitnesses, num_parents, parent_selection_method="SUS"
@@ -377,6 +366,22 @@ class GeneticOptimizer(BaseOptimizer):
                 return individual
         raise ValueError("Pointer exceeds total fitness; check fitness values.")
 
+    def crossover(self, parent1, parent2, crossover_method="one_point"):
+        """
+        Perform crossover between two parent solutions.
+
+        Args:
+            parent1: First parent solution
+            parent2: Second parent solution
+
+        Returns:
+            tuple: (offspring1, offspring2) or single offspring depending on implementation
+        """
+        if crossover_method == "one_point":
+            return self.one_point_crossover(parent1, parent2)
+        else:
+            raise ValueError(f"Unknown crossover method: {crossover_method}")
+
     def one_point_crossover(self, parent1, parent2):
         """
         One-Point Crossover for permutation problems.
@@ -395,6 +400,7 @@ class GeneticOptimizer(BaseOptimizer):
 
         return offspring1, offspring2
 
+    # TODO
     def order_crossover(self, parent1, parent2):
         """
         Order Crossover (OX) for permutation problems.
@@ -418,7 +424,7 @@ class GeneticOptimizer(BaseOptimizer):
 
         # Return both offspring
         pass
-
+    # TODO
     def partially_mapped_crossover(self, parent1, parent2):
         """
         Partially Mapped Crossover (PMX) for permutation problems.
@@ -444,7 +450,7 @@ class GeneticOptimizer(BaseOptimizer):
 
         # Return both offspring
         pass
-
+    # TODO
     def cycle_crossover(self, parent1, parent2):
         """
         Cycle Crossover (CX) for permutation problems.
@@ -468,7 +474,7 @@ class GeneticOptimizer(BaseOptimizer):
 
         # Return both offspring
         pass
-
+    # TODO
     def edge_recombination_crossover(self, parent1, parent2):
         """
         Edge Recombination Crossover for permutation problems.
@@ -495,9 +501,8 @@ class GeneticOptimizer(BaseOptimizer):
         # Return offspring
         pass
 
-    # TODO: Mutation Methods --> Should check for `is_feasible(path/offspring)` after generating offspring, if not feasible, regenerate or repair.
 
-    def mutate(self, solution):
+    def mutate(self, solution, mutation_method='swap'):
         """
         Apply mutation to a solution.
 
@@ -507,14 +512,14 @@ class GeneticOptimizer(BaseOptimizer):
         Returns:
             Mutated solution
         """
-        # Apply mutation with probability mutation_rate
 
         # Implement mutation strategy (swap, insert, inversion, etc.)
-
-        # Ensure mutated solution is valid
-
-        # Return mutated solution
-        pass
+        if mutation_method == 'swap':
+            return self.swap_mutation(solution)
+        else:
+            raise ValueError(
+                f"Unknown mutation method: {mutation_method}"
+            )
 
     def swap_mutation(self, solution):
         """
@@ -527,12 +532,17 @@ class GeneticOptimizer(BaseOptimizer):
             Mutated solution
         """
         # Select two random distinct positions
-
+        position_1 = random.randint(0, len(solution) - 1)
+        position_2 = random.randint(0, len(solution) - 1)
+        while position_1 == position_2:
+            position_2 = random.randint(0, len(solution) - 1)
         # Swap elements at those positions
+        solution[position_1], solution[position_2] = solution[position_2], solution[position_1]
 
         # Return mutated solution
-        pass
+        return solution
 
+    # TODO
     def insert_mutation(self, solution):
         """
         Insert Mutation: remove an element and insert it at a different position.
@@ -551,7 +561,7 @@ class GeneticOptimizer(BaseOptimizer):
 
         # Return mutated solution
         pass
-
+    # TODO
     def inversion_mutation(self, solution):
         """
         Inversion Mutation: reverse the order of a subsequence.
@@ -568,7 +578,7 @@ class GeneticOptimizer(BaseOptimizer):
 
         # Return mutated solution
         pass
-
+    # TODO
     def scramble_mutation(self, solution):
         """
         Scramble Mutation: randomly shuffle elements in a subsequence.
@@ -585,7 +595,7 @@ class GeneticOptimizer(BaseOptimizer):
 
         # Return mutated solution
         pass
-
+    # TODO
     def displacement_mutation(self, solution):
         """
         Displacement Mutation: remove a subsequence and insert it at another position.
@@ -606,7 +616,7 @@ class GeneticOptimizer(BaseOptimizer):
 
         # Return mutated solution
         pass
-
+    # TODO
     def two_opt_mutation(self, solution):
         """
         2-opt Mutation: remove two edges and reconnect in the only other way.
@@ -627,7 +637,7 @@ class GeneticOptimizer(BaseOptimizer):
 
         # Return mutated solution
         pass
-
+    # TODO
     def adaptive_mutation(self, solution, generation, max_generations):
         """
         Adaptive Mutation: adjust mutation intensity based on convergence.
