@@ -47,7 +47,7 @@ class GeneticOptimizer(BaseOptimizer):
         initial_solution,
         mutation_method="swap",
         parent_selection_method="sus",
-        crossover_method="one_point",
+        crossover_method="one_point_per_robots_paths",
         robot_positions=ROBOTS_POSITIONS,
     ):
         """
@@ -164,7 +164,7 @@ class GeneticOptimizer(BaseOptimizer):
         fitness_list,
         mutation_method="swap",
         parent_selection_method="sus",
-        crossover_method="one_point",
+        crossover_method="one_point_per_robots_paths",
         robot_positions=ROBOTS_POSITIONS,
     ):
         """
@@ -339,7 +339,7 @@ class GeneticOptimizer(BaseOptimizer):
             selected_parents = []
             for _ in range(num_parents):
                 pointer = random.uniform(0, sum(fitnesses))
-                parent = self.select_parent_by_roulette(population, fitnesses, pointer)
+                parent = self.select_parent_by_roulette(population, inverse_fitnesses, pointer)
                 selected_parents.append(parent)
             return selected_parents
         else:
@@ -392,7 +392,7 @@ class GeneticOptimizer(BaseOptimizer):
                 return individual
         raise ValueError("Pointer exceeds total fitness; check fitness values.")
 
-    def crossover(self, parent1, parent2, crossover_method="one_point"):
+    def crossover(self, parent1, parent2, crossover_method="one_point_per_robots_paths"):
         """
         Perform crossover between two parent solutions.
 
@@ -405,9 +405,12 @@ class GeneticOptimizer(BaseOptimizer):
         """
         if crossover_method == "one_point":
             return self.one_point_crossover(parent1, parent2)
+        elif crossover_method == "one_point_per_robots_paths":
+            return self.one_point_crossover_for_robots_paths(parent1, parent2)
         else:
             raise ValueError(f"Unknown crossover method: {crossover_method}")
 
+    # ! NOTE: this is much worse than the one point crossover for robots paths
     def one_point_crossover(self, parent1, parent2):
         """
         One-Point Crossover for permutation problems.
@@ -423,6 +426,41 @@ class GeneticOptimizer(BaseOptimizer):
 
         offspring1 = np.concatenate([parent1[:crossover_point], parent2[crossover_point:]])
         offspring2 = np.concatenate([parent2[:crossover_point], parent1[crossover_point:]])
+        return offspring1, offspring2
+
+    def one_point_crossover_for_robots_paths(self, parent1, parent2):
+        """
+        One-Point Crossover for permutation problems.
+
+        Args:
+            parent1: First parent permutation
+            parent2: Second parent permutation
+        Returns:
+            tuple: (offspring1, offspring2)
+        """
+        num_robots = len(parent1)
+        
+        offspring1 = []
+        offspring2 = []
+        
+        # Apply one-point crossover for each robot's path
+        for i in range(num_robots):
+            robot1_path = parent1[i]
+            robot2_path = parent2[i]
+            length = len(robot1_path)
+            
+            # Select random crossover point
+            crossover_point = random.randint(1, length - 1)
+            
+            child1_path = np.concatenate([robot1_path[:crossover_point], robot2_path[crossover_point:]])
+            child2_path = np.concatenate([robot2_path[:crossover_point], robot1_path[crossover_point:]])
+            
+            offspring1.append(child1_path)
+            offspring2.append(child2_path)
+        
+        offspring1 = np.array(offspring1, dtype=object)
+        offspring2 = np.array(offspring2, dtype=object)
+        
         return offspring1, offspring2
 
     # TODO
@@ -543,6 +581,8 @@ class GeneticOptimizer(BaseOptimizer):
         # Implement mutation strategy (swap, insert, inversion, etc.)
         if mutation_method == "swap":
             return self.swap_mutation(solution)
+        elif mutation_method == "swap_per_robot_path":
+            return self.swap_mutation_per_robot_path(solution)
         else:
             raise ValueError(f"Unknown mutation method: {mutation_method}")
 
@@ -571,6 +611,39 @@ class GeneticOptimizer(BaseOptimizer):
         )
         
         return mutated
+    
+    def swap_mutation_per_robot_path(self, solution):
+        """
+        Swap Mutation: randomly swap two positions in the permutation.
+
+        Args:
+            solution: Solution permutation to mutate
+
+        Returns:
+            Mutated solution
+        """
+        mutated_solution = []
+        
+        # Apply swap mutation to each robot's path independently
+        for i in range(len(solution)):
+            robot_path = np.copy(solution[i])
+            
+            # Select two random distinct positions within this robot's path
+            if len(robot_path) > 1:
+                position_1 = random.randint(0, len(robot_path) - 1)
+                position_2 = random.randint(0, len(robot_path) - 1)
+                while position_1 == position_2:
+                    position_2 = random.randint(0, len(robot_path) - 1)
+                
+                # Swap elements at those positions
+                robot_path[position_1], robot_path[position_2] = (
+                    robot_path[position_2],
+                    robot_path[position_1],
+                )
+                
+                mutated_solution.append(robot_path)
+        
+        return np.array(mutated_solution, dtype=object)
 
     # TODO
     def insert_mutation(self, solution):

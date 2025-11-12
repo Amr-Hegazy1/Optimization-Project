@@ -539,8 +539,8 @@ if __name__ == "__main__":
 
         ga = GeneticOptimizer(
             population_size=20,
-            generation_size=100,
-            mutation_rate=0.1,
+            generation_size=200,
+            mutation_rate=0.3,
             elite_rate=0.1,
             visualizer=viz,
         )
@@ -556,9 +556,9 @@ if __name__ == "__main__":
             print("Visualization will replay after optimization completes\n")
         best_movements, best_cost = ga.run(
             initial_movements,
-            mutation_method="swap",
+            mutation_method="swap_per_robot_path",
             parent_selection_method="sus",
-            crossover_method="one_point",
+            crossover_method="one_point_per_robots_paths",
             robot_positions=ROBOTS_POSITIONS,
         )
 
@@ -581,11 +581,11 @@ if __name__ == "__main__":
     print("Starting optimization...")
     if config.ENABLE_VISUALIZATION:
         print("Watch the real-time visualization window!\n")
-        opt_thread = threading.Thread(target=run_sa_optimization, daemon=True)
+        opt_thread = threading.Thread(target=run_ga_optimization, daemon=True)
         opt_thread.start()
 
         # Show visualization (this blocks until window is closed)
         viz.show()
     else:
         # Run directly without threading if no visualization
-        run_sa_optimization()
+        run_ga_optimization()
