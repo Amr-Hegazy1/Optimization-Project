@@ -470,10 +470,10 @@ if __name__ == "__main__":
     # Create visualization window if enabled
     viz = None
     if config.ENABLE_VISUALIZATION:
-        from visualization import OptimizationVisualizer
+        from genetic_visualization import GeneticVisualizer
 
         print("\nInitializing visualization...")
-        viz = OptimizationVisualizer(
+        viz = GeneticVisualizer(
             initial_positions=ROBOTS_POSITIONS,
             map_grid=MAP,
             communication_radius=COMMUNICATION_RADIUS,
@@ -533,7 +533,7 @@ if __name__ == "__main__":
 
     # Run optimization in a separate thread so GUI remains responsive
     def run_ga_optimization():
-        # Run Simulated Annealing Optimization with visualization
+        # Run Genetic Algorithm Optimization with visualization
         print(" - GENETIC ALGORITHM OPTIMIZATION started -")
         print("  - GeneticOptimizer extends BaseOptimizer")
 

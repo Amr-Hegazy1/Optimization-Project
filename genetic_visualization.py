@@ -19,19 +19,19 @@ import time
 from optimization.base_visualizer import BaseVisualizer
 
 
-class OptimizationVisualizer(BaseVisualizer):
+class GeneticVisualizer(BaseVisualizer):
     """
-    Visualizes the Simulated Annealing optimization process in real-time.
-    Shows objective function evolution, temperature cooling, and best solution found.
+    Visualizes the Genetic Algorithm optimization process in real-time.
+    Shows objective function evolution, and best solution found.
     
-    Extends BaseVisualizer with SA-specific temperature plot.
+    Extends BaseVisualizer with GA-specific plots.
     """
     
     def __init__(self, initial_positions, map_grid, 
                  communication_radius, connectivity_threshold,
                  alpha, beta, gamma, visualization_step_size=1):
         """
-        Initialize the SA optimization visualizer.
+        Initialize the GA optimization visualizer.
         
         Args:
             initial_positions: list of initial (x, y) positions
@@ -41,10 +41,6 @@ class OptimizationVisualizer(BaseVisualizer):
             alpha, beta, gamma: objective function weights
             visualization_step_size: number of steps to skip in animation (default: 1)
         """
-        # SA-specific tracking
-        self.temperatures = []
-        self.initial_temperature = None  # Will be set on first update
-        self.display_temperature = None
         
         # Call parent constructor (this will call _create_gui which calls _create_visualization_panel)
         super().__init__(initial_positions, map_grid, communication_radius, 
@@ -53,10 +49,10 @@ class OptimizationVisualizer(BaseVisualizer):
     
     def get_algorithm_name(self):
         """Return the algorithm name for display."""
-        return "Simulated Annealing"
+        return "Genetic Algorithm"
     
     def _create_visualization_panel(self, parent):
-        """Create the matplotlib visualization panel with SA-specific temperature plot."""
+        """Create the matplotlib visualization panel with GA-specific plots."""
         # Create figure with subplots - redesigned for clarity
         self.fig = plt.Figure(figsize=(19.0, 10.6), facecolor='white')
         
@@ -73,14 +69,6 @@ class OptimizationVisualizer(BaseVisualizer):
             top=0.965,
             bottom=0.05,
         )
-        # ! Temperature
-        # Top left: Temperature over iterations (SA-specific)
-
-        # self.ax_temp = self.fig.add_subplot(gs[0, 0])
-        # self.ax_temp.set_title('Temperature Cooling Schedule', fontsize=13, fontweight='bold', pad=10)
-        # self.ax_temp.set_xlabel('Iteration', fontsize=11)
-        # self.ax_temp.set_ylabel('Temperature', fontsize=11)
-        # self.ax_temp.grid(True, alpha=0.3, linestyle='--')
         
         # Bottom left: Cost function evolution (minimization)
         self.ax_obj = self.fig.add_subplot(gs[1, 0])
@@ -99,43 +87,32 @@ class OptimizationVisualizer(BaseVisualizer):
         self.canvas.get_tk_widget().pack(fill=tk.BOTH, expand=True)
         
         # Initialize plots
-        self._initialize_sa_plots()
+        self._initialize_ga_plots()
         self._initialize_common_plots()
         self._initialize_robot_markers()
     
-    def _initialize_sa_plots(self):
-        """Initialize SA-specific plots (temperature and objective function)."""
-        # Temperature plot
-        # ! Temperature
-        # self.temp_line, = self.ax_temp.plot([], [], 'r-', linewidth=2.5, label='Temperature')
-        # self.ax_temp.legend(loc='upper right', fontsize=10)
+    def _initialize_ga_plots(self):
+        """Initialize GA-specific plots (objective function)."""
         
         # Objective function plot
         self.current_line, = self.ax_obj.plot([], [], 'b-', linewidth=1.5, alpha=0.7, label='Current Solution')
         self.best_line, = self.ax_obj.plot([], [], 'g-', linewidth=2.5, label='Best Solution')
         self.ax_obj.legend(loc='lower right', fontsize=10)
     
-    def update_optimization(self, iteration, temperature, current_cost, best_cost, best_path, current_path=None):
+    def update_optimization(self, iteration, current_cost, best_cost, best_path, current_path=None):
         """
         Update visualization with new optimization data.
         
         Implementation of abstract method from BaseVisualizer.
-        Handles SA-specific temperature parameter.
+        Handles GA-specific parameters.
         """
-        # Store initial temperature on first update
-        if self.initial_temperature is None:
-            self.initial_temperature = temperature
-        
-        # Store SA-specific data
-        self.temperatures.append(temperature)
-        
+    
         # Update common data through parent method
         self._update_common_data(iteration, current_cost, best_cost, best_path, current_path)
         
         # Store display state including temperature
         self.pending_display_state = {
             "iteration": iteration,
-            "temperature": temperature,
             "current_cost": current_cost,
             "best_cost": best_cost,
         }
@@ -147,12 +124,7 @@ class OptimizationVisualizer(BaseVisualizer):
         """Update all plots with current data."""
         if len(self.iterations) == 0:
             return
-            
-        # # Update temperature plot (SA-specific)
-        # ! Temperature
-        # self.temp_line.set_data(self.iterations, self.temperatures)
-        # self.ax_temp.relim()
-        # self.ax_temp.autoscale_view()
+        
         
         # Update objective function plot
         self.current_line.set_data(self.iterations, self.current_costs)
@@ -170,7 +142,7 @@ class OptimizationVisualizer(BaseVisualizer):
         self.root.update()
     
     def _update_statistics(self):
-        """Update statistics panel with SA-specific information."""
+        """Update statistics panel with GA-specific information."""
         self.ax_stats.clear()
         self.ax_stats.axis('off')
         
@@ -178,12 +150,9 @@ class OptimizationVisualizer(BaseVisualizer):
             return
         
         # Create compact statistics text
-        stats_text = ["SIMULATED ANNEALING"]
+        stats_text = ["GENETIC ALGORITHM"]
         stats_text.append(f"Iteration:  {self.display_iteration:,}")
-        temp_line = f"Temperature: {self.display_temperature:.2f}" if self.display_temperature is not None else "Temperature: --"
-        if self.initial_temperature is not None:
-            temp_line += f"  (start {self.initial_temperature:.2f})"
-        stats_text.append(temp_line)
+
         stats_text.append("")
         stats_text.append("COST VALUES (lower=better)")
         if self.display_current_cost is not None:
@@ -237,19 +206,15 @@ class OptimizationVisualizer(BaseVisualizer):
         )
     
     def _update_status_bar(self, final=False, final_coverage=None):
-        """Update status bar with SA-specific information."""
+        """Update status bar with GA-specific information."""
         if len(self.iterations) == 0:
             status_text = "Status: Waiting for optimization to start..."
         else:
             prefix = "Status: ✓ Optimization Complete!" if final else "Status: Optimizing..."
             iter_value = self.display_iteration if self.display_iteration is not None else self.iterations[-1]
-            # ! Temperature
-            # temp_value = self.display_temperature if self.display_temperature is not None else self.temperatures[-1]
             cost_value = self.display_best_cost if self.display_best_cost is not None else self.best_costs[-1]
             status_text = (
                 f"{prefix} | Iter: {iter_value} | "
-                # ! Temperature
-                # f"Temp: {temp_value:.2f} | "
                 f"Best Cost: {cost_value:.6f}"
             )
             if final and final_coverage is not None:
