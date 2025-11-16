@@ -3,13 +3,16 @@ import math
 import random
 from collections import deque
 import config
+from config import NUMBER_OF_GENERATIONS
 
 # Import configuration parameters
 N, M = config.MAP_HEIGHT, config.MAP_WIDTH
 ROBOTS_POSITIONS = config.ROBOT_INITIAL_POSITIONS
+positions = ROBOTS_POSITIONS
 R = len(ROBOTS_POSITIONS)
 K = config.PATH_LENGTH
 V = config.ROBOT_VISION
+NUMBER_OF_GENERATIONS = config.NUMBER_OF_GENERATIONS
 
 # Energy and communication parameters
 ENERGY_BUDGET = config.ENERGY_BUDGET
@@ -29,52 +32,57 @@ MOVES = config.MOVES
 PHYSICAL_MAP = config.PHYSICAL_MAP
 
 
-# def init_map():
-#     """
-#     Initialize the map using Manhattan distance for vision range.
-#     Only cells within Manhattan distance V are visible.
+def init_map():
+    """
+    Initialize the map using Manhattan distance for vision range.
+    Only cells within Manhattan distance V are visible.
 
-#     Returns:
-#         numpy.ndarray: Initialized map
-#     """
-#     map_grid = np.zeros((N, M), dtype=int)
+    Returns:
+        numpy.ndarray: Initialized map
+    """
+    map_grid = np.zeros((N, M), dtype=int)
 
-#     for robot_y, robot_x in ROBOTS_POSITIONS:
-#         for dy in range(-V, V + 1):
-#             for dx in range(-V, V + 1):
-#                 # Check Manhattan distance
-#                 if abs(dy) + abs(dx) <= V:
-#                     cell_y = robot_y + dy
-#                     cell_x = robot_x + dx
+    for robot_y, robot_x in ROBOTS_POSITIONS:
+        for dy in range(-V, V + 1):
+            for dx in range(-V, V + 1):
+                # Check Manhattan distance
+                if abs(dy) + abs(dx) <= V:
+                    cell_y = robot_y + dy
+                    cell_x = robot_x + dx
 
-#                     if 0 <= cell_y < N and 0 <= cell_x < M:
-#                         map_grid[cell_y, cell_x] = PHYSICAL_MAP[cell_y][cell_x]
+                    if 0 <= cell_y < N and 0 <= cell_x < M:
+                        map_grid[cell_y, cell_x] = PHYSICAL_MAP[cell_y][cell_x]
 
-#     return map_grid
-
-
-MAP = np.zeros((N, M))
+    return map_grid
 
 
+MAP = init_map()
 
-def movements_to_positions(movements_array, initial_positions):
+
+def movements_to_positions(movements_array):
     """Convert from movement arrays [-> , <- ,..etc] to position paths [(x,y),..]."""
-    R = len(initial_positions)  # number of robots
-    K = len(movements_array[0])  # number of steps
+    global ROBOTS_POSITIONS
     path_array = []
+    obstacle_found = False
+    for k in range(K):
+        current_positions = []
+        for r in range(R):
+            x, y = ROBOTS_POSITIONS[r]
+            for move_idx in movements_array[r][k]:
+                dx, dy = MOVES[move_idx]
+                x, y = x + dx, y + dy
+                # Ensure within map bounds
+                x = max(0, min(N - 1, x))
+                y = max(0, min(M - 1, y))
 
-    for r in range(R):
-        x, y = initial_positions[r]
-        robot_path = []
-        for move_idx in movements_array[r]:
-            dx, dy = MOVES[move_idx]
-            x, y = x + dx, y + dy
-            # Ensure within map bounds
-            x = max(0, min(N - 1, x))
-            y = max(0, min(M - 1, y))
-            robot_path.append((x, y))
-        path_array.append(robot_path)
+                if PHYSICAL_MAP[x][y] == 2:
+                    obstacle_found = True
+                    break
 
+                current_positions.append((x, y))
+            if not obstacle_found :
+                ROBOTS_POSITIONS = current_positions
+                path_array.append(current_positions)
     return np.array(path_array, dtype=object)
 
 
@@ -544,26 +552,26 @@ if __name__ == "__main__":
             elite_rate=0.1,
             visualizer=viz,
         )
+        while NUMBER_OF_GENERATIONS > 0:
+            # Enable fast mode if configured
+            if (
+                config.ENABLE_VISUALIZATION
+                and hasattr(config, "FAST_MODE")
+                and config.FAST_MODE
+            ):
+                ga.fast_mode = True
+                print("\nFast Mode enabled - optimization will run at full speed")
+                print("Visualization will replay after optimization completes\n")
+            best_movements, best_cost = ga.run(
+                initial_movements,
+                mutation_method="swap_per_robot_path",
+                parent_selection_method="sus",
+                crossover_method="one_point_per_robots_paths",
+                robot_positions=ROBOTS_POSITIONS,
+            )
 
-        # Enable fast mode if configured
-        if (
-            config.ENABLE_VISUALIZATION
-            and hasattr(config, "FAST_MODE")
-            and config.FAST_MODE
-        ):
-            ga.fast_mode = True
-            print("\nFast Mode enabled - optimization will run at full speed")
-            print("Visualization will replay after optimization completes\n")
-        best_movements, best_cost = ga.run(
-            initial_movements,
-            mutation_method="swap_per_robot_path",
-            parent_selection_method="sus",
-            crossover_method="one_point_per_robots_paths",
-            robot_positions=ROBOTS_POSITIONS,
-        )
-
-        # Convert best movements back to path
-        best_path = movements_to_positions(best_movements, ROBOTS_POSITIONS)
+            # Convert best movements back to path
+            best_path = movements_to_positions(best_movements, ROBOTS_POSITIONS)
 
         # Display final results in console
         print("\n" + "=" * 70)

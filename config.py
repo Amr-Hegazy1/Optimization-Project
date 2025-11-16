@@ -11,6 +11,8 @@ Modify these parameters to customize the optimization behavior.
 # Map dimensions
 MAP_WIDTH = 20
 MAP_HEIGHT = 20
+NUMBER_OF_GENERATIONS = 100
+
 
 # Physical map (Free (1), Obstacle(2), Robot(3))
 PHYSICAL_MAP = [
