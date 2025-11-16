@@ -111,7 +111,7 @@ SA_MAX_ITERATIONS = 5000
 # ============================================================================
 
 # Enable/disable real-time visualization (set to False for faster optimization)
-ENABLE_VISUALIZATION = True
+ENABLE_VISUALIZATION = False
 
 # Fast mode: Run optimization at full speed, then replay visualization afterwards
 # When True: No real-time visualization updates during optimization, much faster
