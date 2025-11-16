@@ -565,6 +565,8 @@ if __name__ == "__main__":
         # Convert best movements back to path
         best_path = movements_to_positions(best_movements, ROBOTS_POSITIONS)
 
+        print("BEST PATH:", best_path)
+
         # Display final results in console
         print("\n" + "=" * 70)
         print("FINAL RESULTS")
