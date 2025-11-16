@@ -361,7 +361,7 @@ class GeneticOptimizer(BaseOptimizer):
         if parent_selection_method == "roulette":
             selected_parents = []
             for _ in range(num_parents):
-                pointer = random.uniform(0, sum(fitnesses))
+                pointer = random.uniform(0, sum(inverse_fitnesses))
                 parent = self.select_parent_by_roulette(
                     population, inverse_fitnesses, pointer
                 )
