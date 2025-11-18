@@ -3,6 +3,7 @@ Configuration file for Multi-Robot Path Planning Optimization.
 
 Modify these parameters to customize the optimization behavior.
 """
+import numpy as np
 
 # ============================================================================
 # ENVIRONMENT CONFIGURATION
@@ -36,6 +37,8 @@ PHYSICAL_MAP = [
     [1, 1, 1, 1, 1, 3, 2, 1, 1, 2, 1, 1, 1, 1, 1, 2, 2, 1, 1, 1]   # Robot 5
 ]
 
+MAP = np.zeros((MAP_HEIGHT, MAP_WIDTH))
+
 # Robot configuration
 ROBOT_INITIAL_POSITIONS = [
     (5, 0),   # Robot 1
@@ -45,6 +48,8 @@ ROBOT_INITIAL_POSITIONS = [
     (19, 5),  # Robot 5
     (15, 19)  # Robot 6
 ]
+
+R = len(ROBOT_INITIAL_POSITIONS)  # Number of robots
 
 # Path length (Number of steps)
 PATH_LENGTH = 100
@@ -111,7 +116,7 @@ SA_MAX_ITERATIONS = 5000
 # ============================================================================
 
 # Enable/disable real-time visualization (set to False for faster optimization)
-ENABLE_VISUALIZATION = True
+ENABLE_VISUALIZATION = False
 
 # Fast mode: Run optimization at full speed, then replay visualization afterwards
 # When True: No real-time visualization updates during optimization, much faster

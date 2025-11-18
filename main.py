@@ -10,6 +10,7 @@ ROBOTS_POSITIONS = config.ROBOT_INITIAL_POSITIONS
 R = len(ROBOTS_POSITIONS)
 K = config.PATH_LENGTH
 V = config.ROBOT_VISION
+MAP = config.MAP
 
 # Energy and communication parameters
 ENERGY_BUDGET = config.ENERGY_BUDGET
@@ -53,7 +54,7 @@ PHYSICAL_MAP = config.PHYSICAL_MAP
 #     return map_grid
 
 
-MAP = np.zeros((N, M))
+
 
 
 
@@ -67,6 +68,7 @@ def movements_to_positions(movements_array, initial_positions):
         x, y = initial_positions[r]
         robot_path = []
         for move_idx in movements_array[r]:
+            print("MOVE IDX:", move_idx)
             dx, dy = MOVES[move_idx]
             x, y = x + dx, y + dy
             # Ensure within map bounds
@@ -456,6 +458,7 @@ if __name__ == "__main__":
     # NOTE: OptimizationVisualizer inherits from optimization.base_visualizer.BaseVisualizer
     from simulated_annealing import SimulatedAnnealing
     from genetic import GeneticOptimizer
+    from ant_colony import AntColonyOptimizer
     import threading
 
     print("\n" + "=" * 70)
@@ -579,6 +582,45 @@ if __name__ == "__main__":
         if not config.ENABLE_VISUALIZATION:
             print("\nOptimization complete. Exiting...")
 
+
+    def run_aco_optimization():
+        # Run Ant Colony Optimization with visualization
+        print(" - ANT COLONY OPTIMIZATION started -")
+        print("  - AntColonyOptimizer extends BaseOptimizer")
+
+        aco = AntColonyOptimizer(
+            num_ants=30,
+            max_iterations=200,
+            evaporation_rate=0.1,
+            visualizer=viz,
+        )
+
+        # Enable fast mode if configured
+        if (
+            config.ENABLE_VISUALIZATION
+            and hasattr(config, "FAST_MODE")
+            and config.FAST_MODE
+        ):
+            aco.fast_mode = True
+            print("\nFast Mode enabled - optimization will run at full speed")
+            print("Visualization will replay after optimization completes\n")
+        best_movements = aco.run(initial_movements)
+
+        # Convert best movements back to path
+        best_path = movements_to_positions(best_movements, ROBOTS_POSITIONS)
+
+        print("BEST PATH:", best_path)
+
+        # Display final results in console
+        print("\n" + "=" * 70)
+        print("FINAL RESULTS")
+        print("=" * 70)
+        cost_function(best_path, visualize=True)
+        print("=" * 70)
+
+        # If no visualization, exit after optimization
+        if not config.ENABLE_VISUALIZATION:
+            print("\nOptimization complete. Exiting...")
     # Start optimization
     print("Starting optimization...")
     if config.ENABLE_VISUALIZATION:
@@ -590,4 +632,4 @@ if __name__ == "__main__":
         viz.show()
     else:
         # Run directly without threading if no visualization
-        run_ga_optimization()
+        run_aco_optimization()
