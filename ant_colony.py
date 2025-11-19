@@ -5,7 +5,7 @@ from config import *
 
 class AntColonyOptimizer(BaseOptimizer):
     
-    def __init__(self, max_iterations: int = 5000, visualizer: BaseVisualizer = None, alpha: float = 1.0, beta: float = 0.0, evaporation_rate: float = 0.5, num_ants: int = 10) -> None:
+    def __init__(self, max_iterations: int = 5000, visualizer: BaseVisualizer = None, alpha: float = 1.0, beta: float = 0.0, evaporation_rate: float = 0.4, num_ants: int = 10) -> None:
         super().__init__(max_iterations, visualizer)
         self.alpha = alpha  # Importance of pheromone
         self.beta = beta    # Importance of heuristic information
@@ -54,6 +54,10 @@ class AntColonyOptimizer(BaseOptimizer):
         
         
     def run(self, initial_solution=None):
+        # Initialize tracking variables
+        best_cost = float('inf')
+        best_solution = None
+        
         for iteration in range(self.max_iterations):
             
             
@@ -83,22 +87,74 @@ class AntColonyOptimizer(BaseOptimizer):
             
             # deposit new pheromones based on ants' paths
             for ant in range(self.num_ants):
+                ant_path = self.movements_to_positions(self.ants[ant])
+                ant_cost = self.cost_function(ant_path)
                 seen_positions = set()
                 for r in range(R):
+                    current_pos = ROBOT_INITIAL_POSITIONS[r]
                     for t in range(PATH_LENGTH):
-                        current_pos = self.ants[ant, r, t]
-                        x, y = current_pos
-                        x, y = int(x), int(y)
+                        move_index = self.ants[ant, r, t]
+                        move = MOVES[move_index]
+                        x = int(current_pos[0] + move[0])
+                        y = int(current_pos[1] + move[1])
                         if (x, y) not in seen_positions:
                             seen_positions.add((x, y))
-                            
-                            self.pheromone_map[x, y] += self.cost_function(self.ants[ant])
-                            
-        costs = [self.cost_function(ant) for ant in self.ants]
+                            self.pheromone_map[x, y] += 1.0 / (1.0 + ant_cost)
+                        current_pos = (x, y)
+                        
+            # Find best ant
+            costs = []
+            for ant in range(self.num_ants):
+                ant_path = self.movements_to_positions(self.ants[ant])
+                costs.append(self.cost_function(ant_path))
+            
+            current_best_ant_index = np.argmin(costs)
+            current_cost = costs[current_best_ant_index]
+            current_solution = self.ants[current_best_ant_index]
+            
+            # Update global best
+            if current_cost < best_cost:
+                best_cost = current_cost
+                best_solution = current_solution.copy()
+            
+            # Update visualization if available
+            if self.visualizer is not None:
+                # Calculate pheromone statistics
+                avg_pheromone = np.mean(self.pheromone_map)
+                max_pheromone = np.max(self.pheromone_map)
+                
+                # Convert solutions to position paths for visualization
+                current_path = self.movements_to_positions(current_solution)
+                best_path = self.movements_to_positions(best_solution)
+                
+                # Store history for fast mode
+                update_kwargs = {
+                    'iteration': iteration,
+                    'current_cost': current_cost,
+                    'best_cost': best_cost,
+                    'best_path': best_path,
+                    'avg_pheromone': avg_pheromone,
+                    'max_pheromone': max_pheromone,
+                    'current_path': current_path
+                }
+                
+                if self.fast_mode:
+                    self.optimization_history.append(update_kwargs)
+                else:
+                    self.visualizer.update_optimization(**update_kwargs)
+                    if hasattr(self.visualizer, 'wait_for_animation_complete'):
+                        self.visualizer.wait_for_animation_complete()
         
-        best_ant_index = np.argmin(costs)
-        best_path = self.ants[best_ant_index]
-        best_path = np.array(best_path, dtype=int)
+        # Replay history in fast mode
+        if self.fast_mode and self.visualizer is not None:
+            self.visualizer.replay_optimization_history(self.optimization_history)
+        
+        # Finish visualization
+        if self.visualizer is not None:
+            if not self.fast_mode:
+                self.visualizer.finish_optimization()
+        
+        best_path = self.movements_to_positions(best_solution) if best_solution is not None else None
         
         return best_path
         

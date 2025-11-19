@@ -169,6 +169,25 @@ class BaseOptimizer(ABC):
         """Calculate Manhattan distance between two points."""
         return abs(p1[0] - p2[0]) + abs(p1[1] - p2[1])
 
+    def movements_to_positions(self, movements_array):
+        """
+        Convert movement indices to position paths.
+       """
+        # print(" Movements to positions input:", movements_array)
+        path_array = []
+        for r in range(R):
+            x, y = ROBOT_INITIAL_POSITIONS[r]
+            robot_path = []
+            for move_idx in movements_array[r]:
+                dx, dy = MOVES[move_idx]
+                x, y = x + dx, y + dy
+                # Ensure within map bounds
+                x = max(0, min(MAP_HEIGHT - 1, x))
+                y = max(0, min(MAP_WIDTH - 1, y))
+                robot_path.append((x, y))
+            path_array.append(robot_path)
+        # print(" Movements to positions output:", path_array)
+        return np.array(path_array, dtype=object)
 
     def compute_energy_used(self, path, initial_pos):
         """

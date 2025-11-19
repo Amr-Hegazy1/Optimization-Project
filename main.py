@@ -68,7 +68,7 @@ def movements_to_positions(movements_array, initial_positions):
         x, y = initial_positions[r]
         robot_path = []
         for move_idx in movements_array[r]:
-            print("MOVE IDX:", move_idx)
+            # print("MOVE IDX:", move_idx)
             dx, dy = MOVES[move_idx]
             x, y = x + dx, y + dy
             # Ensure within map bounds
@@ -405,7 +405,6 @@ def cost_function(path_array, visualize=False):
         )
         print(f"  ---")
         print(f"  Total Cost: {cost:.6f}")
-
     return cost
 
 
@@ -473,10 +472,10 @@ if __name__ == "__main__":
     # Create visualization window if enabled
     viz = None
     if config.ENABLE_VISUALIZATION:
-        from genetic_visualization import GeneticVisualizer
+        from aco_visualization import AntColonyVisualizer
 
         print("\nInitializing visualization...")
-        viz = GeneticVisualizer(
+        viz = AntColonyVisualizer(
             initial_positions=ROBOTS_POSITIONS,
             map_grid=MAP,
             communication_radius=COMMUNICATION_RADIUS,
@@ -591,7 +590,8 @@ if __name__ == "__main__":
         aco = AntColonyOptimizer(
             num_ants=30,
             max_iterations=200,
-            evaporation_rate=0.1,
+            alpha=0.5,
+            evaporation_rate=0.4,
             visualizer=viz,
         )
 
@@ -604,10 +604,10 @@ if __name__ == "__main__":
             aco.fast_mode = True
             print("\nFast Mode enabled - optimization will run at full speed")
             print("Visualization will replay after optimization completes\n")
-        best_movements = aco.run(initial_movements)
+        best_path = aco.run(initial_movements)
 
-        # Convert best movements back to path
-        best_path = movements_to_positions(best_movements, ROBOTS_POSITIONS)
+        # # Convert best movements back to path
+        # best_path = movements_to_positions(best_movements, ROBOTS_POSITIONS)
 
         print("BEST PATH:", best_path)
 
@@ -625,7 +625,7 @@ if __name__ == "__main__":
     print("Starting optimization...")
     if config.ENABLE_VISUALIZATION:
         print("Watch the real-time visualization window!\n")
-        opt_thread = threading.Thread(target=run_ga_optimization, daemon=True)
+        opt_thread = threading.Thread(target=run_aco_optimization, daemon=True)
         opt_thread.start()
 
         # Show visualization (this blocks until window is closed)
