@@ -1,13 +1,13 @@
 import random
 
 import numpy as np
+import config
 from optimization.base_optimizer import BaseOptimizer
-from main import (
-    movements_to_positions,
-    cost_function,
-    is_feasible,
-    ROBOTS_POSITIONS,
-)
+from typing import List, Optional, Sequence, Tuple
+
+MovementGenome = np.ndarray
+Population = List[MovementGenome]
+FitnessScores = Sequence[float]
 
 
 class GeneticOptimizer(BaseOptimizer):
@@ -20,10 +20,10 @@ class GeneticOptimizer(BaseOptimizer):
     # NOTE: We deduce the crossover size from the remainder of population size after elite and mutation
     def __init__(
         self,
-        population_size=100,
-        generation_size=100,
-        mutation_rate=0.1,
-        elite_rate=0.1,
+        population_size=config.GA_POPULATION_SIZE,
+        generation_size=config.GA_GENERATION_SIZE,
+        mutation_rate=config.GA_MUTATION_RATE,
+        elite_rate=config.GA_ELITE_RATE,
         visualizer=None,
     ):
         """
@@ -44,12 +44,12 @@ class GeneticOptimizer(BaseOptimizer):
     # TODO: Make sure to generate initial population that is feasible.
     def run(
         self,
-        initial_solution,
-        mutation_method="swap",
-        parent_selection_method="sus",
-        crossover_method="one_point_per_robots_paths",
-        robot_positions=ROBOTS_POSITIONS,
-    ):
+        initial_solution: MovementGenome,
+        mutation_method: str = config.GA_MUTATION_METHOD,
+        parent_selection_method: str = config.GA_PARENT_SELECTION_METHOD,
+        crossover_method: str = config.GA_CROSSOVER_METHOD,
+        robot_positions: Optional[Sequence[Tuple[int, int]]] = None,
+    ) -> Tuple[MovementGenome, float]:
         """
         Perform genetic algorithm optimization.
 
@@ -63,6 +63,8 @@ class GeneticOptimizer(BaseOptimizer):
         """
 
         # generate a population from the initial solution
+        robot_positions = robot_positions or config.ROBOT_INITIAL_POSITIONS
+
         initial_population = self.generate_population(
             initial_solution, robot_positions=robot_positions
         )
@@ -104,8 +106,12 @@ class GeneticOptimizer(BaseOptimizer):
                 iteration=generation_number,
                 current_cost=current_cost,
                 best_cost=best_cost,
-                best_path=movements_to_positions(best_solution, robot_positions),
-                current_path=movements_to_positions(current_solution, robot_positions),
+                best_path=self.movements_to_positions(
+                    best_solution, robot_positions
+                ),
+                current_path=self.movements_to_positions(
+                    current_solution, robot_positions
+                ),
             )
 
             # Wait for visualization using base class method
@@ -123,21 +129,32 @@ class GeneticOptimizer(BaseOptimizer):
         print(f"Best cost found: {best_cost:.6f}")
         return best_solution, best_cost
 
-    def generate_population(self, initial_solution, robot_positions=ROBOTS_POSITIONS):
+    def generate_population(
+        self,
+        initial_solution: MovementGenome,
+        robot_positions: Optional[Sequence[Tuple[int, int]]] = None,
+    ) -> Population:
+        robot_positions = robot_positions or config.ROBOT_INITIAL_POSITIONS
         initial_population = []
         initial_population.append(initial_solution)
         mutated_individual = initial_solution
         for _ in range(self.population_size - 1):
             mutated_individual = self.mutate(mutated_individual, mutation_method="swap")
             counter = 0
+            candidate_path = self.movements_to_positions(
+                mutated_individual, robot_positions
+            )
             while (
-                not is_feasible(
-                    movements_to_positions(mutated_individual, robot_positions)
+                not self.is_feasible(
+                    candidate_path, initial_positions=robot_positions
                 )
                 and counter < 100
             ):
                 counter += 1
                 mutated_individual = self.mutate(mutated_individual)
+                candidate_path = self.movements_to_positions(
+                    mutated_individual, robot_positions
+                )
             if counter >= 100:
                 # if after 100 tries we could not find a feasible mutation, just add the initial solution again
                 mutated_individual = initial_solution
@@ -171,13 +188,14 @@ class GeneticOptimizer(BaseOptimizer):
 
     def generate_neighbor(
         self,
-        solution,
-        fitness_list,
-        mutation_method="swap",
-        parent_selection_method="sus",
-        crossover_method="one_point_per_robots_paths",
-        robot_positions=ROBOTS_POSITIONS,
-    ):
+        solution: Population,
+        fitness_list: FitnessScores,
+        mutation_method: str = config.GA_MUTATION_METHOD,
+        parent_selection_method: str = config.GA_PARENT_SELECTION_METHOD,
+        crossover_method: str = config.GA_CROSSOVER_METHOD,
+        robot_positions: Optional[Sequence[Tuple[int, int]]] = None,
+    ) -> Population:
+        robot_positions = robot_positions or config.ROBOT_INITIAL_POSITIONS
         """
         Generate a neighboring population of solutions using genetic operations.
 
@@ -209,11 +227,20 @@ class GeneticOptimizer(BaseOptimizer):
                 individual, mutation_method=mutation_method
             )
             counter = 0
-            while not is_feasible(
-                movements_to_positions(mutated_individual, robot_positions)
-            ) and counter < 100:
+            candidate_path = self.movements_to_positions(
+                mutated_individual, robot_positions
+            )
+            while (
+                not self.is_feasible(
+                    candidate_path, initial_positions=robot_positions
+                )
+                and counter < 100
+            ):
                 counter += 1
                 mutated_individual = self.mutate(individual)
+                candidate_path = self.movements_to_positions(
+                    mutated_individual, robot_positions
+                )
             if counter >= 100:
                 mutated_individual = individual
                 print(
@@ -240,11 +267,16 @@ class GeneticOptimizer(BaseOptimizer):
             )
             offspring_list = [offspring1, offspring2]
             # this ensures that we only add feasible offsprings to the new population
-            offspring_list = [
-                offspring
-                for offspring in offspring_list
-                if is_feasible(movements_to_positions(offspring, robot_positions))
-            ]
+            feasible_offspring = []
+            for offspring in offspring_list:
+                offspring_path = self.movements_to_positions(
+                    offspring, robot_positions
+                )
+                if self.is_feasible(
+                    offspring_path, initial_positions=robot_positions
+                ):
+                    feasible_offspring.append(offspring)
+            offspring_list = feasible_offspring
             offsprings_sorted_by_fitness = sorted(
                 offspring_list, key=lambda x: self.evaluate_fitness(x)
             )
@@ -266,7 +298,12 @@ class GeneticOptimizer(BaseOptimizer):
                     continue
         return new_population
 
-    def evaluate_fitness(self, solution, robots_positions=ROBOTS_POSITIONS):
+    def evaluate_fitness(
+        self,
+        solution: MovementGenome,
+        robots_positions: Optional[Sequence[Tuple[int, int]]] = None,
+    ) -> float:
+        robots_positions = robots_positions or config.ROBOT_INITIAL_POSITIONS
         """
         Evaluate the fitness of a solution.
 
@@ -277,8 +314,8 @@ class GeneticOptimizer(BaseOptimizer):
             float: Fitness value (lower is better for minimization)
         """
         # Calculate objective function value
-        path = movements_to_positions(solution, robots_positions)
-        fitness = cost_function(path)
+        path = self.movements_to_positions(solution, robots_positions)
+        fitness = self.cost_function(path)
 
         # Return fitness value
         return fitness

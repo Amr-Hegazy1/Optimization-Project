@@ -5,7 +5,7 @@ from config import *
 
 class AntColonyOptimizer(BaseOptimizer):
     
-    def __init__(self, max_iterations: int = 5000, visualizer: BaseVisualizer = None, alpha: float = 1.0, beta: float = 0.0, evaporation_rate: float = 0.4, num_ants: int = 10) -> None:
+    def __init__(self, max_iterations: int = ACO_MAX_ITERATIONS, visualizer: BaseVisualizer = None, alpha: float = ACO_ALPHA, beta: float = ACO_BETA, evaporation_rate: float = ACO_EVAPORATION_RATE, num_ants: int = ACO_NUM_ANTS) -> None:
         super().__init__(max_iterations, visualizer)
         self.alpha = alpha  # Importance of pheromone
         self.beta = beta    # Importance of heuristic information
