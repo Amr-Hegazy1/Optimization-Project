@@ -307,21 +307,15 @@ class AntColonyOptimizer(BaseOptimizer):
                 best_solution = self.ants[best_idx].copy()
                 best_path = current_path
 
-            if self.visualizer is not None:
-                update = {
-                    "iteration": iteration,
-                    "current_cost": current_cost,
-                    "best_cost": best_cost,
-                    "best_path": best_path,
-                    "avg_pheromone": float(np.mean(self.pheromone_map)),
-                    "max_pheromone": float(np.max(self.pheromone_map)),
-                    "current_path": current_path,
-                }
-                if self.fast_mode:
-                    self.optimization_history.append(update)
-                else:
-                    self.visualizer.update_optimization(**update)
-                    self.wait_for_visualization()
+            self.update_visualization(
+                iteration=iteration,
+                current_cost=current_cost,
+                best_cost=best_cost,
+                best_path=best_path,
+                avg_pheromone=float(np.mean(self.pheromone_map)),
+                max_pheromone=float(np.max(self.pheromone_map)),
+                current_path=current_path,
+            )
 
         self.finish_optimization()
         if best_path is not None:
