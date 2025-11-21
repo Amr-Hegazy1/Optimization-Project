@@ -319,9 +319,7 @@ def run_single_aco(num_robots, path_length, num_ants, max_iterations, aco_alpha,
 
 if __name__ == "__main__":
     
-    # Run Case Study 1: Full Scale (6 robots, 125 steps)
+    # Run the choen Case Study 
     compare_all(cs_config.CHOSEN_CASE_STUDY)
     
-    # Uncomment to run other case studies:
-    # compare_all(cs_config.CASE_STUDY_2)  # Medium Scale
-    # compare_all(cs_config.CASE_STUDY_3)  # Small Scale
+ 
