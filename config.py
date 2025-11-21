@@ -131,13 +131,14 @@ ACO_NUM_ANTS = 30
 ACO_ALPHA = 0.5
 ACO_BETA = 0.0
 ACO_EVAPORATION_RATE = 0.4
+ACO_STRATEGY = "as"  # Options: "saco" (Simple ACO), "as" (Ant System)
 
 
 # ============================================================================
 # APPLICATION RUNTIME PARAMETERS
 # ============================================================================
 
-OPTIMIZER_TYPE = "sa"  # Options: "sa", "ga", "aco"
+OPTIMIZER_TYPE = "aco"  # Options: "sa", "ga", "aco"
 
 
 # ============================================================================
