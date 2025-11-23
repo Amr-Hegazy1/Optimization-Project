@@ -112,4 +112,4 @@ CASE_STUDY_3 = {
 }
 
 # Default case study to run
-CHOSEN_CASE_STUDY = CASE_STUDY_1
+CHOSEN_CASE_STUDY = CASE_STUDY_2

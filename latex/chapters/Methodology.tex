@@ -254,3 +254,280 @@ where $T_{\text{max}} = \max\{\ell, nm\}$ is an upper bound on mission duration.
 Given the initial positions $\{p_{i,0}\}_{i=1}^N$ and the current obstacle knowledge $O_0$, the optimization must select positions for all robots at all future time steps that satisfy all constraints while maximizing the objective function. This results in a total of $2NT_{\text{max}}$ integer decision variables (two coordinates per robot per time step), plus $nm$ binary coverage variables, plus $NT_{\text{max}}$ binary disconnection indicators $\delta_{i,t}$, plus $NT_{\text{max}}$ binary obstacle encounter indicators $\eta_{i,t}$, making this a challenging mixed-integer nonlinear optimization problem due to the distance computations in the connectivity and penalty terms.
 
 The planner generates the full path for each robot from start to finish in one optimization solve. This approach differs from receding horizon methods and provides globally optimal paths subject to the known information at planning time. However, since obstacles are discovered online, the actual executed paths may deviate from the plan when reactive obstacle avoidance is triggered. In practice, replanning may be performed periodically as new obstacle information becomes available, but each planning cycle produces a complete path rather than just the next few steps.
+
+\section{Simulated Annealing Implementation}
+
+The implemented \textbf{Simulated Annealing (SA)} algorithm optimizes the movement sequences of six robots over 125 time steps on a $20 \times 20$ grid. The algorithm begins from a feasible random path and iteratively explores new neighboring solutions by modifying up to 15 movements per robot. Each candidate path is validated against energy, collision, and obstacle constraints.
+
+Solutions are evaluated using the following cost function:
+\[
+\text{Cost} = \frac{\alpha}{\text{Coverage}} + \frac{\beta}{\text{Connectivity}} + \gamma \cdot P_{\text{disconnect}}
+\]
+where $\alpha=3000$, $\beta=500$, and $\gamma=4.0$ weight coverage, connectivity, and disconnection penalties respectively.  
+The algorithm always accepts better solutions, while worse solutions are accepted with a probability based on the current temperature $T$. The temperature cools geometrically from 10.0 to 0.1 across 5000 iterations, gradually reducing exploration.
+
+\subsection{Pseudocode}
+
+\begin{algorithm}[H]
+\caption{Simulated Annealing for Multi-Robot Path Planning}
+\begin{algorithmic}[1]
+\State Initialize current solution $S_{current}$
+\State Evaluate cost $C_{current} = f(S_{current})$
+\State Set best solution $S_{best} \gets S_{current}$ and $C_{best} \gets C_{current}$
+\State Initialize temperature $T \gets T_{init}$
+\State Set iteration counter $iter \gets 0$
+\While{$T > T_{min}$ \textbf{and} $iter < N_{max}$}
+    \State Generate neighbor solution $S_{new}$ from $S_{current}$
+    \If{$S_{new}$ is feasible}
+        \State Compute cost $C_{new} = f(S_{new})$
+        \If{$C_{new} < C_{current}$}
+            \State Accept $S_{new}$ as $S_{current}$
+        \Else
+            \State Compute acceptance probability $p \gets \exp\!\left(-\dfrac{C_{\text{new}} - C_{\text{current}}}{T}\right)$
+            \State Generate random number $r \in [0, 1]$
+            \If{$r < p$} \State Accept $S_{new}$ as $S_{current}$ \Else \State Reject $S_{new}$ \EndIf
+        \EndIf
+        \If{$C_{new} < C_{best}$}
+            \State Update global best: $S_{best} \gets S_{new}$, $C_{best} \gets C_{new}$
+        \EndIf
+    \EndIf
+    \State Update temperature: $T \gets \alpha \times T$ \Comment{Geometric cooling}
+    \State Increment $iter$
+\EndWhile
+\State \textbf{return} $S_{best}$
+\end{algorithmic}
+\end{algorithm}
+
+\subsection{Flowchart}
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.8\textwidth]{Figures/flow_chart.png}
+    \caption{Simulated Annealing algorithm flowchart for multi-robot path planning.}
+    \label{fig:sa_flowchart}
+\end{figure}
+
+\subsection{Problem-Specific Considerations}
+
+\begin{itemize}
+    \item \textbf{Neighborhood Operator:} Implemented in \texttt{generate\_neighbor()}, which randomly alters up to 15 movements per robot and ensures feasibility before returning the modified path.
+
+    \item \textbf{Feasibility Check:} Conducted by \texttt{is\_feasible(path\_array)}, verifying that paths respect motion constraints, avoid collisions, remain within map bounds, and comply with energy limits.
+
+    \item \textbf{Cooling Schedule:} The temperature $T$ is reduced geometrically using $T_{new} = T_{current} \times 0.995$, gradually limiting the acceptance of worse solutions as the algorithm progresses.
+\end{itemize}
+
+\subsection{GenerateNeighbor Subroutine}
+
+\begin{algorithm}[H]
+\caption{Generate Feasible Neighbor Solution}
+\begin{algorithmic}[1]
+\Require Current movements $M_{current}$, maximum retries $R_{max}$
+\Ensure Feasible neighbor movements $M_{neighbor}$
+
+\For{$attempt \gets 1$ \textbf{to} $R_{max}$}
+    \State $M_{new} \gets \text{Copy}(M_{current})$ \Comment{Deep copy}
+    
+    \For{each robot $r$}
+        \For{$i \gets 1$ \textbf{to} 15} \Comment{Modify 15 random movements}
+            \State $idx \gets \text{RandomInt}(0, K-1)$ \Comment{Random step index}
+            \State $M_{new}[r][idx] \gets \text{RandomInt}(0, 4)$ \Comment{Random direction: 0=stay, 1-4=move}
+        \EndFor
+    \EndFor
+    
+    \State $P_{new} \gets \text{MovementsToPositions}(M_{new})$
+    \If{$\text{IsFeasible}(P_{new})$} \Comment{Check for collisions}
+        \State \Return $M_{new}$ \Comment{Valid neighbor found}
+    \EndIf
+\EndFor
+
+\State \textbf{Warning:} No feasible neighbor found
+\State \Return $M_{current}$ \Comment{Return original if all attempts fail}
+\end{algorithmic}
+\end{algorithm}
+
+\subsection{Key Algorithm Components}
+
+\subsubsection{Cost Function}
+The cost function is designed as a \textbf{minimization problem}:
+\begin{equation}
+\text{Cost}(P) = -\alpha \cdot \text{Coverage}(P) + \beta \cdot \text{PathLength}(P)
+\end{equation}
+
+where:
+\begin{itemize}
+    \item $\text{Coverage}(P)$: Percentage of area covered by robots
+    \item $\text{PathLength}(P)$: Total path length traveled
+    \item $\alpha$: Weight for coverage (negative to maximize coverage)
+    \item $\beta$: Weight for path smoothness
+\end{itemize}
+
+\textbf{Lower cost is better} - the algorithm minimizes this cost function.
+
+\subsubsection{Acceptance Probability}
+The Metropolis criterion for accepting worse solutions:
+\begin{equation}
+P(\text{accept}) = \begin{cases}
+1 & \text{if } C_{new} < C_{current} \\
+\exp\left(-\frac{C_{new} - C_{current}}{T}\right) & \text{otherwise}
+\end{cases}
+\end{equation}
+
+As temperature $T$ decreases:
+\begin{itemize}
+    \item Early iterations: High $T$ allows exploration (accepts many worse solutions)
+    \item Late iterations: Low $T$ focuses on exploitation (rarely accepts worse solutions)
+\end{itemize}
+
+\subsubsection{Cooling Schedule}
+Geometric cooling is used:
+\begin{equation}
+T_{k+1} = \alpha \cdot T_k
+\end{equation}
+
+where $\alpha$ is the cooling rate (typically 0.995 in your implementation).
+
+\subsubsection{Neighbor Generation Strategy}
+For each robot, 15 random movement steps are modified:
+\begin{itemize}
+    \item Movement values: 0 (stay), 1 (up), 2 (down), 3 (left), 4 (right)
+    \item Feasibility check: Ensures no robot collisions
+    \item Maximum 100 retries to find valid neighbor
+\end{itemize}
+
+\subsubsection{Termination Criteria}
+The algorithm stops when:
+\begin{enumerate}
+    \item Temperature drops below $T_{min}$, \textbf{OR}
+    \item Maximum iterations $N_{max}$ is reached
+\end{enumerate}
+
+\section{Genetic Algorithm Implementation}
+
+The implemented \textbf{Genetic Algorithm (GA)} algorithm optimizes the movement sequences of six robots over 125 time steps on a $20 \times 20$ grid. The algorithm begins from a feasible random population, and then does several generational updates by mutation and crossover methods searching the solution landscape until it reaches the optimal solution.Each candidate path is validated against energy, collision, and obstacle constraints.
+
+Solutions are evaluated using the following cost function:
+\[
+\text{Cost} = \frac{\alpha}{\text{Coverage}} + \frac{\beta}{\text{Connectivity}} + \gamma \cdot P_{\text{disconnect}}
+\]
+where $\alpha=3000$, $\beta=500$, and $\gamma=4.0$ weight coverage, connectivity, and disconnection penalties respectively.  
+
+The algorithm chooses a certain percentage of chromosomes (solutions) per population as elites, where they are propagated to the next iteration, since they have the best fitness value (lowest cost). It selects another percentage of individuals to mutate, and those are the worst fitness individuals. Then, parents are selected from the remaining solutions to perform crossover.
+
+\subsection{Pseudocode}
+
+\begin{algorithm}[H]
+\caption{Genetic Algorithm for Multi-Robot Path Planning}
+\begin{algorithmic}[1]
+\State \textbf{Input:} Initial solution, Robot positions, Population size $m$, Generation size $i_{max}$
+\State \textbf{Input:} Elite rate $p_e$, Mutation rate $p_m$, Objective function $f(\mathbf{x})$
+\State \textbf{Initialize:} Generate initial population from initial solution
+\State \textbf{Initialize:} Best solution $\mathbf{x}^*$, Best cost $f^* = \infty$
+
+\While{$i \leq i_{max}$}
+    \State \textbf{// Evaluate Fitness}
+    \For{each individual in population}
+        \State Compute fitness: $fitness = f(\mathbf{x})$
+        \State Store fitness in fitness\_list
+    \EndFor
+    
+    \State \textbf{// Update Best Solution}
+    \State $current\_cost = \min(fitness\_list)$
+    \State $current\_solution = population[argmin(fitness\_list)]$
+    \If{$current\_cost < f^*$}
+        \State $f^* = current\_cost$
+        \State $\mathbf{x}^* = current\_solution$
+    \EndIf
+    
+    \State \textbf{// Generate New Population}
+    \State $new\_population = []$
+    
+    \State \textbf{// Elitism: Select top $p_e \times m$ survivors}
+    \State Sort population by fitness
+    \State $elites = $ top $p_e \times m$ individuals
+    \State Add $elites$ to $new\_population$
+    
+    \State \textbf{// Mutation: Mutate worst $p_m \times m$ individuals}
+    \State $worst\_individuals = $ bottom $p_m \times m$ individuals
+    \For{each individual in worst\_individuals}
+        \State Apply swap mutation per robot path
+        \State Ensure mutated individual is feasible
+        \State Add mutated individual to $new\_population$
+    \EndFor
+    
+    \State \textbf{// Crossover: Generate offspring for remaining slots}
+    \State $num\_crossover = m - |new\_population|$
+    \State $offspring\_count = 0$
+    \While{$offspring\_count < num\_crossover$}
+        \State Select 2 parents using Stochastic Universal Sampling (SUS)
+        \State Apply one-point crossover per robot path
+        \State Generate $offspring_1, offspring_2$
+        \State Filter feasible offspring
+        \State Sort feasible offspring by fitness
+        \If{feasible offspring exist}
+            \State Add fittest offspring to $new\_population$
+            \State $offspring\_count = offspring\_count + 1$
+        \EndIf
+    \EndWhile
+    
+    \State $population = new\_population$
+    \State $i = i + 1$
+\EndWhile
+
+\State \textbf{Output:} Best solution $\mathbf{x}^*$, Best cost $f^*$
+\end{algorithmic}
+\end{algorithm}
+
+\subsection{Problem-Specific Considerations}
+\begin{itemize}
+    \item \textbf{Crossover Operator:} Implemented using one-point crossover per robot path in \\ \texttt{one\_point\_crossover\_for\_robots\_paths()}, which selects a random crossover point for each robot's path independently and exchanges segments between two parent solutions to create offspring.
+    \item \textbf{Mutation Operator:} Implemented using swap mutation per robot path in \\ \texttt{swap\_mutation\_per\_robot\_path()}, which randomly swaps two positions within each robot's path independently to introduce variation.
+    \item \textbf{Parent Selection:} Implemented using Stochastic Universal Sampling (SUS) in \\ \texttt{select\_parents\_by\_sus()}, which uses evenly-spaced pointers to select parents proportionally to their fitness, providing better diversity than roulette wheel selection.
+    \item \textbf{Feasibility Check:} Conducted by \texttt{is\_feasible(path\_array)} throughout the genetic operations, verifying that generated offspring and mutated individuals respect motion constraints, avoid collisions, remain within map bounds, and comply with energy limits. Infeasible solutions are rejected and regenerated.
+    \item \textbf{Elite Preservation:} The top $p_e \times m$ individuals (fittest solutions) are directly carried over to the next generation to preserve high-quality solutions.
+\end{itemize}
+
+\section{Ant Colony Optimization Implementation}
+
+The \textbf{Ant Colony Optimization (ACO)} module constructs paths for all robots by sampling movements for a population of ants while maintaining a global pheromone map. Each ant independently samples a path using either a pheromone-only strategy (\texttt{SACO}) or the Ant System variant (\texttt{AS}) that mixes pheromone strength with a heuristic map. After every iteration, pheromones evaporate globally and are reinforced along the best path of the iteration; local pheromone updates occur either per move (\texttt{AS}) or once per constructed path (\texttt{SACO}). Heuristic desirability is pre-computed so that unexplored cells receive higher weight than free space and obstacles.
+
+\subsection{Pseudocode}
+
+\begin{algorithm}[H]
+\caption{Ant Colony Optimization for Multi-Robot Path Planning}
+\begin{algorithmic}[1]
+\State \textbf{Input:} Number of ants $m$, iterations $N_{max}$, $\alpha$ (pheromone weight), $\beta$ (heuristic weight), evaporation rate $\rho$, strategy $\in\{$SACO, AS$\}$
+\State Initialize pheromone map $\tau$ to $1.0$ for all cells; build heuristic map $\eta$ (unexplored $>$ free $>$ obstacle)
+\State \textbf{Initialize:} $best\_cost \gets \infty$, $best\_path \gets \varnothing$
+\For{$iter = 1$ to $N_{max}$}
+    \State Apply evaporation: $\tau \gets (1-\rho)\cdot \tau$
+    \For{ant $k = 1$ to $m$}
+        \For{each robot $r$}
+            \State $p \gets$ initial position of robot $r$
+            \For{$t = 1$ to $K$ steps}
+                \State $F \gets$ feasible moves from $p$ (stay or 4-connected within bounds)
+                \State Compute weight $w = \tau^{\alpha} \cdot \eta^{\beta}$ for each move (omit $\eta$ when SACO)
+                \State Sample move via roulette-wheel on $w$
+                \State Apply move, update $p$; if AS, apply local decay on $\tau$ at $p$
+            \EndFor
+        \EndFor
+        \State Build full path $P_k$, compute cost $C_k$ with coverage/connectivity penalties
+        \State Local deposit along $P_k$ (pheromone-only or heuristic-weighted)
+    \EndFor
+    \State Select iteration best $(P^*, C^*)$; reinforce $\tau$ along $P^*$ (AS) while evaporating
+    \If{$C^* < best\_cost$} \State $best\_cost \gets C^*$, $best\_path \gets P^*$ \EndIf
+    \State Record metrics / visualization
+\EndFor
+\State \textbf{Return} $best\_path$, $best\_cost$
+\end{algorithmic}
+\end{algorithm}
+
+\subsection{Implementation Details}
+\begin{itemize}
+    \item \textbf{Move sampling:} \texttt{AntColonyStrategy.select\_move()} computes weights from $\tau^{\alpha}$ (SACO) or $\tau^{\alpha}\eta^{\beta}$ (AS). Moves are drawn with roulette-wheel sampling; if all weights vanish, a random feasible move is chosen.
+    \item \textbf{Heuristic map:} \texttt{\_build\_heuristic\_map()} assigns 2.0 to unexplored, 1.2 to free space, and $10^{-6}$ to obstacles to discourage infeasible cells.
+    \item \textbf{Evaporation and updates:} \texttt{before\_iteration()} applies uniform evaporation. \texttt{ASStrategy.local\_after\_move()} applies per-move decay toward the initial pheromone. Both strategies call \texttt{update\_local\_pheromone()} after constructing a full path, depositing $(1/(1+\text{cost}))$ on visited cells (scaled by heuristic for AS).
+    \item \textbf{Global reinforcement:} \texttt{ASStrategy.after\_iteration()} reinforces the iteration-best path with factor $(1+\beta)/(1+\text{cost})$ while re-applying evaporation; SACO relies solely on local deposits plus the global evaporation step.
+    \item \textbf{Feasibility:} \texttt{\_get\_feasible\_moves()} restricts motion to in-bounds 4-connected moves; collision/energy/obstacle feasibility is enforced in the shared cost function.
+    \item \textbf{Interfaces:} Inherits visualization/cost utilities from \texttt{BaseOptimizer}; maintains ant moves as an $(m \times R \times K)$ array and converts to positions with \texttt{movements\_to\_positions()} for scoring.
+\end{itemize}

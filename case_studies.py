@@ -319,7 +319,17 @@ def run_single_aco(num_robots, path_length, num_ants, max_iterations, aco_alpha,
 
 if __name__ == "__main__":
     
-    # Run the choen Case Study 
-    compare_all(cs_config.CHOSEN_CASE_STUDY)
+    # Run comparison for Case Study 1
+    print("\n\n=== Running Case Study Comparisons ===\n")
+    print("Starting Case Study 1 Comparison...")
+    # compare_all(cs_config.CASE_STUDY_1)
+    
+    # Run comparison for Case Study 2
+    print("Starting Case Study 2 Comparison...")
+    compare_all(cs_config.CASE_STUDY_2)
+    
+    # Run comparison for Case Study 3
+    print("Starting Case Study 3 Comparison...")
+    compare_all(cs_config.CASE_STUDY_3)
     
  
