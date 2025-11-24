@@ -7,6 +7,7 @@ Simple comparison of SA, GA, and ACO algorithms with fixed common parameters.
 import numpy as np
 import matplotlib.pyplot as plt
 import case_study_config as cs_config
+import os
 from optimization.base_optimizer import BaseOptimizer
 from ant_colony import AntColonyOptimizer
 from genetic import GeneticOptimizer
@@ -156,7 +157,7 @@ def run_aco(robot_positions, path_length, num_ants, max_iterations, aco_alpha, a
     return final_cost, cost_history, best_path
 
 
-def plot_comparison(sa_history, ga_history, aco_history, num_robots, path_length):
+def plot_comparison(sa_history, ga_history, aco_history, num_robots, path_length, case_study_name):
     """Plot comparison of all three algorithms."""
     plt.figure(figsize=(14, 7))
     
@@ -178,7 +179,15 @@ def plot_comparison(sa_history, ga_history, aco_history, num_robots, path_length
     print(f"  GA:  {len(ga_history)} iterations")
     print(f"  ACO: {len(aco_history)} iterations")
     
-    plt.show()
+    # Ensure the directory exists
+    os.makedirs("latex/Figures", exist_ok=True)
+    
+    # Save the plot
+    filename = f"latex/Figures/{case_study_name}_comparison.png"
+    plt.savefig(filename, dpi=300, bbox_inches='tight')
+    print(f"Plot saved as {filename}")
+    
+    plt.close()  # Close the figure to free memory
 
 
 def calculate_coverage(path_array, num_robots, path_length):
@@ -268,7 +277,7 @@ def compare_all(case_study):
     
     # Plot comparison
     print("\nGenerating comparison plot...")
-    plot_comparison(sa_history, ga_history, aco_history, R, PATH_LENGTH)
+    plot_comparison(sa_history, ga_history, aco_history, R, PATH_LENGTH, case_study['name'])
 
 
 def run_single_sa(num_robots, path_length, initial_temp, cooling_rate, min_temp, max_iterations):
@@ -322,7 +331,7 @@ if __name__ == "__main__":
     # Run comparison for Case Study 1
     print("\n\n=== Running Case Study Comparisons ===\n")
     print("Starting Case Study 1 Comparison...")
-    # compare_all(cs_config.CASE_STUDY_1)
+    compare_all(cs_config.CASE_STUDY_1)
     
     # Run comparison for Case Study 2
     print("Starting Case Study 2 Comparison...")
@@ -332,4 +341,34 @@ if __name__ == "__main__":
     print("Starting Case Study 3 Comparison...")
     compare_all(cs_config.CASE_STUDY_3)
     
- 
+    # Run comparison for Case Study 4: Higher max_iterations
+    print("Starting Case Study 4 Comparison...")
+    compare_all(cs_config.CASE_STUDY_4)
+    
+    # Run comparison for Case Study 5: Higher SA initial temperature
+    print("Starting Case Study 5 Comparison...")
+    compare_all(cs_config.CASE_STUDY_5)
+    
+    # Run comparison for Case Study 6: Larger GA population
+    print("Starting Case Study 6 Comparison...")
+    compare_all(cs_config.CASE_STUDY_6)
+    
+    # Run comparison for Case Study 7: ACO with non-zero beta
+    print("Starting Case Study 7 Comparison...")
+    compare_all(cs_config.CASE_STUDY_7)
+    
+    # Run comparison for Case Study 8: Different global alpha and beta
+    print("Starting Case Study 8 Comparison...")
+    compare_all(cs_config.CASE_STUDY_8)
+    
+    # Run comparison for Case Study 9: Smaller communication radius
+    print("Starting Case Study 9 Comparison...")
+    compare_all(cs_config.CASE_STUDY_9)
+    
+    # Run comparison for Case Study 10: Fewer robots
+    print("Starting Case Study 10 Comparison...")
+    compare_all(cs_config.CASE_STUDY_10)
+    
+    # # Run comparison for Case Study 11: Longer path length
+    # print("Starting Case Study 11 Comparison...")
+    # compare_all(cs_config.CASE_STUDY_11)

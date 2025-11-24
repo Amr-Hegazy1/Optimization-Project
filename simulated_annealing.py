@@ -54,7 +54,7 @@ class SimulatedAnnealing(BaseOptimizer):
             for r in range(len(new_movements)):
                 # Randomly modify up to 10 movements for robot r
                 for _ in range(15):
-                    idx = random.randint(0, config.PATH_LENGTH - 1)
+                    idx = random.randint(0, len(new_movements[r]) - 1)
                     new_movements[r][idx] = random.randint(0, 4)
 
             # Convert movements back to path

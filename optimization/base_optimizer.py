@@ -316,12 +316,12 @@ class BaseOptimizer(ABC):
     ) -> float:
         """Return cumulative distance robots must travel to reconnect to the main network."""
         penalty = 0.0
-        horizon = path_length or PATH_LENGTH
+        horizon = path_array.shape[1]
         for t in range(horizon):
-            positions_t = [path_array[i][t] for i in range(R)]
-            adj_matrix = np.zeros((R, R))
-            for i in range(R):
-                for j in range(i + 1, R):
+            positions_t = [path_array[i][t] for i in range(path_array.shape[0])]
+            adj_matrix = np.zeros((path_array.shape[0], path_array.shape[0]))
+            for i in range(path_array.shape[0]):
+                for j in range(i + 1, path_array.shape[0]):
                     dist = cls.euclidean_distance(positions_t[i], positions_t[j])
                     if dist <= CONNECTIVITY_THRESHOLD:
                         adj_matrix[i][j] = 1
@@ -330,7 +330,7 @@ class BaseOptimizer(ABC):
             if len(components) == 1:
                 continue
             main_component = max(components, key=len)
-            for i in range(R):
+            for i in range(path_array.shape[0]):
                 if i in main_component:
                     continue
                 min_dist = min(
@@ -346,7 +346,7 @@ class BaseOptimizer(ABC):
         """Count visits to obstacle cells across all robots and timesteps."""
         penalty = 0
         horizon = path_length or PATH_LENGTH
-        for r in range(R):
+        for r in range(path_array.shape[0]):
             for t in range(horizon):
                 x, y = path_array[r][t]
                 if MAP[x, y] == 2:
@@ -362,9 +362,10 @@ class BaseOptimizer(ABC):
     ) -> bool:
         """Validate all hard constraints (bounds, motion, energy, obstacles, collisions)."""
         initial_positions = initial_positions or ROBOT_INITIAL_POSITIONS
-        horizon = path_length or PATH_LENGTH
+        horizon = path_array.shape[1]
         occupied = {}
-        for r in range(R):
+
+        for r in range(path_array.shape[0]):
             path = path_array[r]
             initial_pos = initial_positions[r]
             if not cls.valid_move(initial_pos, path[0]):
@@ -391,17 +392,17 @@ class BaseOptimizer(ABC):
         if not cls.is_feasible(path_array):
             return float("inf")
         visited_unexplored = set()
-        for r in range(R):
-            for t in range(PATH_LENGTH):
+        for r in range(path_array.shape[0]):
+            for t in range(path_array.shape[1]):
                 x, y = path_array[r][t]
                 if MAP[x, y] == 0:
                     visited_unexplored.add((x, y))
         coverage_count = len(visited_unexplored)
         connectivity_sum = 0.0
-        for t in range(PATH_LENGTH):
-            positions_t = [path_array[i][t] for i in range(R)]
-            for i in range(R):
-                for j in range(i + 1, R):
+        for t in range(path_array.shape[1]):
+            positions_t = [path_array[i][t] for i in range(path_array.shape[0])]
+            for i in range(path_array.shape[0]):
+                for j in range(i + 1, path_array.shape[0]):
                     dist = cls.euclidean_distance(positions_t[i], positions_t[j])
                     connectivity_sum += cls.compute_link_weight(dist, COMMUNICATION_RADIUS)
         disconnection_penalty = cls.compute_disconnection_penalty(path_array)
@@ -433,7 +434,7 @@ class BaseOptimizer(ABC):
         """Print a textual coverage summary including final robot positions."""
         print("\nVisualizing Coverage Map...")
         final_positions = {}
-        for r in range(R):
+        for r in range(path_array.shape[0]):
             final_pos = tuple(path_array[r][-1])
             final_positions[final_pos] = r + 1
         print("\n" + "=" * 50)

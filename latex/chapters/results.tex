@@ -612,53 +612,31 @@ A5 & SACO (fast evap) & 6 & 125 & 0.7 & 0.0 & 0.60 & 35 & 200 & 58.50 \\
     \item SACO variants (A4, A5) underperformed markedly (61.25\%, 58.50\%), highlighting the value of heuristic guidance; faster evaporation further degrades pheromone-only performance.
 \end{itemize}
 
-\subsection{Case Study Configuration}
+\subsection{Case Study Comparisons (SA vs GA vs ACO)}
 
-Using the shared case study setup (6 robots, 125 steps, $\alpha=3000$, $\beta=500$, $\gamma=4.0$), we compared the AS baseline against SACO. Coverage values are placeholders pending execution.
+We ran ten case studies with varying team sizes and step counts using the shared cost weights ($\alpha=3000$, $\beta=500$, $\gamma=4.0$) except Case 8 ($\alpha=2000$, $\beta=300$). Each algorithm used its standard settings (SA and GA at their tuned defaults; ACO with AS strategy from A1). Convergence plots are saved under \texttt{Figures/case\_study\_\{1..10\}\_comparison.png}.
 
 \begin{table}[H]
 \centering
-\caption{ACO Case Study Comparison (placeholder coverage)}
-\begin{tabular}{@{}lcccccc@{}}
+\caption{Case Study Results Across SA, GA, and ACO}
+\begin{tabular}{@{}lccccccccc@{}}
 \toprule
-\textbf{Case} & \textbf{Strategy} & \textbf{Ants} & \textbf{Evap.} & \textbf{$\alpha$} & \textbf{$\beta$} & \textbf{Coverage (\%)} \\
+\textbf{Case} & \textbf{Robots} & \textbf{Steps} & \textbf{SA Cost} & \textbf{GA Cost} & \textbf{ACO Cost} & \textbf{SA Cov (\%)} & \textbf{GA Cov (\%)} & \textbf{ACO Cov (\%)} & \textbf{Iters} \\
 \midrule
-A6 & AS (case study) & 30 & 0.40 & 0.5 & 1.0 & 70.0 \\
-A7 & SACO (case study) & 35 & 0.40 & 0.7 & 0.0 & 66.0 \\
+1 & 6 & 125 & 15.2118 & 14.2329 & \textbf{11.3218} & 60.00 & 66.50 & \textbf{91.50} & 200 \\
+2 & 4 & 100 & 27.5861 & 22.5629 & \textbf{11.6971} & 35.50 & 47.50 & \textbf{71.75} & 150 \\
+3 & 3 & 50  & 62.2327 & 60.0123 & \textbf{11.5823} & 19.75 & 19.75 & \textbf{54.00} & 100 \\
+4 & 4 & 100 & 26.1269 & 20.2141 & \textbf{11.6649} & 39.00 & 50.00 & \textbf{73.75} & 300 \\
+5 & 4 & 100 & 27.2941 & 23.1667 & \textbf{11.7073} & 39.75 & 43.75 & \textbf{67.00} & 150 \\
+6 & 4 & 100 & 28.1506 & 21.2091 & \textbf{11.9577} & 36.75 & 50.75 & \textbf{65.25} & 150 \\
+7 & 4 & 100 & 26.6599 & 21.0870 & \textbf{11.7282} & 41.00 & 49.00 & \textbf{71.75} & 150 \\
+8 & 4 & 100 & 27.6028 & 19.6376 & \textbf{11.7149} & 37.75 & 52.50 & \textbf{65.25} & 150 \\
+9 & 4 & 100 & 27.3795 & 23.0067 & \textbf{11.8872} & 38.25 & 42.75 & \textbf{70.25} & 150 \\
+10 & 2 & 100 & 54.4752 & 56.2474 & \textbf{11.9127} & 22.75 & 19.25 & \textbf{47.25} & 150 \\
 \bottomrule
 \end{tabular}
-\label{tab:aco_case_study}
+\label{tab:case_study_comparison}
 \end{table}
 
-\paragraph{Discussion (placeholder narrative):}
-AS leverages the heuristic map to bias toward unexplored cells, while SACO relies solely on pheromone feedback. Once runs are completed, we will quantify how heuristic guidance shifts coverage relative to pheromone-only exploration.
-
-\subsection{Convergence Tracking}
-
-The case study harness (\texttt{case\_studies.py}) records best-cost history per iteration for ACO alongside SA and GA. The ACO curve will be added as a convergence plot once the experiments are executed; current build retains the hooks and logging without embedding a figure to avoid stale graphics.
-
-\subsection{Performance Indices (Placeholders)}
-
-Twenty-run benchmarking (mirroring SA/GA methodology) will be executed after final parameter selection. The table below holds placeholder values to be replaced with measured statistics.
-
-\begin{table}[H]
-\centering
-\caption{ACO Performance Indices (20 Runs) -- placeholder values}
-\begin{tabular}{|l|c|}
-\hline
-\textbf{Metric} & \textbf{ACO (AS baseline)} \\
-\hline
-Optimal Fitness Value & $12.5000$ \\
-\hline
-Mean Fitness & $12.9000$ \\
-\hline
-Standard Deviation & $3.00 \times 10^{-1}$ \\
-\hline
-Computational Time & $220.000$ sec \\
-\hline
-\end{tabular}
-\label{tab:aco_performance}
-\end{table}
-
-\paragraph{Planned analysis:}
-We will mirror the SA/GA performance commentary—contrasting solution quality, stability, and runtime—once the above placeholders are populated from the batch runs.
+\paragraph{Discussion:}
+Across all ten case studies ACO delivered the lowest cost and highest coverage, often by large margins (e.g., Case 1: 91.50\% vs 66.50\% GA and 60.00\% SA). GA consistently outperformed SA on both cost and coverage, but both lagged behind ACO, especially in smaller teams (Cases 3 and 10) where ACO’s pheromone/heuristic guidance drove markedly better dispersion. Longer runs (Case 4 with 300 iterations) continued to favor ACO, suggesting that the pheromone map converges to high-quality paths even with extended horizons.
