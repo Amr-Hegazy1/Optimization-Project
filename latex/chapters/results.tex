@@ -463,81 +463,6 @@ Our SA implementation achieved a maximum area coverage of \textbf{67.5\%} under 
 Our GA implementation achieved a maximum area coverage of \textbf{76.2\%}, approximately \textbf{0.37\% lower} than the benchmark reported by Kashyap \textit{et al.} (2025) \cite{kashyap2025simulations}. The small discrepancy can be attributed to the genetic algorithm’s reliance on randomized variation and finite population diversity, which may limit convergence to the global optimum despite strong selective pressure and well-tuned crossover and mutation operators.
 
 
-\subsection{Performance Indices}
-
-To rigorously evaluate the optimization performance and consistency of both Genetic Algorithm (GA) and Simulated Annealing (SA), we conducted a comprehensive benchmarking study with 20 independent runs of each algorithm. This section presents the comparative analysis of key performance metrics.
-
-\subsubsection{Benchmark Methodology}
-
-For each algorithm, we performed 20 independent runs using the configuration parameters from Case C1 (6 robots, 125 steps, $\alpha=3000$, $\beta=500$). Each run started from a different randomly generated feasible initial solution to ensure statistical independence. The following metrics were collected:
-
-\begin{itemize}
-    \item \textbf{Optimal Solution:} The robot positions that yielded the lowest cost across all runs
-    \item \textbf{Optimal Fitness Value:} The minimum cost achieved (lower is better for minimization)
-    \item \textbf{Mean Fitness:} Average cost across all 20 runs, indicating typical performance
-    \item \textbf{Standard Deviation:} Variance in fitness values, measuring algorithm consistency
-    \item \textbf{Computational Time:} Average execution time per run in seconds
-\end{itemize}
-
-\subsubsection{Performance Comparison Results}
-
-Table~\ref{tab:performance_indices} presents the comparative performance metrics for both algorithms over 20 independent runs.
-
-\begin{table}[H]
-\centering
-\caption{Function Minimization: Performance Indices (20 Runs)}
-\label{tab:performance_indices}
-\begin{tabular}{|l|c|c|}
-\hline
-\textbf{Metric} & \textbf{Simulated Annealing} & \textbf{Genetic Algorithm} \\
-\hline
-Optimal Solution & $(4.00, 12.00), (2.00, 6.00), \ldots$ & $(10.00, 4.00), (7.00, 8.00), \ldots$ \\
-\hline
-Optimal Fitness Value & $13.4304$ & $11.1824$ \\
-\hline
-Mean Fitness & $13.5886$ & $11.6484$ \\
-\hline
-Standard Deviation & $2.17 \times 10^{-1}$ & $3.39 \times 10^{-1}$ \\
-\hline
-Computational Time & $14.334$ sec & $436.234$ sec \\
-\hline
-\end{tabular}
-\end{table}
-
-\subsubsection{Analysis and Discussion}
-
-The benchmark results reveal significant differences in the optimization characteristics of both algorithms:
-
-\begin{itemize}
-    \item \textbf{Solution Quality:} 
-    The Genetic Algorithm achieved a superior optimal fitness value of $11.1824$ compared to Simulated Annealing's $13.4304$, representing approximately \textbf{16.7\% better performance} in minimizing the cost function. This demonstrates GA's effectiveness in exploring the solution space through crossover and mutation operators, which discover better path configurations than SA's single-solution neighborhood search. The GA's optimal solution places robots at positions $(10, 4)$ and $(7, 8)$, indicating better spatial distribution for coverage compared to SA's solution at $(4, 12)$ and $(2, 6)$.
-
-    \item \textbf{Consistency and Reliability:}
-    Both algorithms show relatively similar consistency levels, with standard deviations of $0.217$ (SA) and $0.339$ (GA). The GA exhibits slightly higher variance, which may reflect its more aggressive exploration strategy through crossover operations that can produce diverse solutions across different runs. However, both algorithms maintain reasonable consistency, with mean fitness values ($13.5886$ for SA, $11.6484$ for GA) staying close to their respective optimal values. The small difference between mean and optimal fitness for both algorithms (SA: $0.158$, GA: $0.466$) indicates that both methods reliably produce solutions in the vicinity of their best performance, though GA maintains better absolute performance even in its worst cases.
-
-    \item \textbf{Computational Efficiency:}
-    Simulated Annealing demonstrates dramatically faster execution time ($14.334$ sec) compared to Genetic Algorithm ($436.234$ sec), running approximately \textbf{30 times faster}. This substantial speed advantage stems from SA's simpler computational structure: evaluating and mutating a single solution per iteration versus GA's operations on an entire population of 100 individuals across 100 generations. GA must evaluate fitness for 100 solutions per generation, perform parent selection via Stochastic Universal Sampling (SUS), execute crossover operations on multiple parent pairs, apply mutations to the worst-performing individuals, and validate feasibility for all offspring—operations that scale linearly with population size and generation count.
-
-    \item \textbf{Exploration vs. Exploitation Trade-off:}
-    The results demonstrate a classic optimization trade-off: SA prioritizes computational speed with acceptable solution quality, while GA sacrifices runtime for superior solution quality. GA's population-based exploration strategy, combined with one-point crossover per robot path and SUS parent selection, provides better global search capability than SA's temperature-controlled single-solution neighborhood search. The crossover operator effectively recombines partial solutions from different regions of the solution space, enabling GA to discover the configuration at $(10, 4), (7, 8)$ that achieves 16.7\% better cost reduction. Meanwhile, SA's swap mutation operates locally on a single trajectory, making it more susceptible to local optima, as evidenced by converging to the suboptimal solution at $(4, 12), (2, 6)$.
-
-    \item \textbf{Practical Implications:}
-    The choice between algorithms depends on application requirements. For time-critical scenarios where rapid deployment is essential (e.g., emergency search-and-rescue with immediate response needs), SA's 14-second runtime provides acceptable solutions quickly. However, for mission planning where solution quality directly impacts success rate and 7 additional minutes of computation is acceptable, GA's 16.7\% improvement in cost function translates to meaningfully better coverage and connectivity performance. Given that path planning is typically performed offline before deployment, the 436-second GA runtime represents a reasonable preprocessing cost for substantially improved mission effectiveness.
-
-    \item \textbf{Scalability Considerations:}
-    The 30× runtime difference highlights a critical scalability limitation of population-based methods. With current parameters (population=100, generations=100), GA performs approximately 10,000 fitness evaluations compared to SA's 5,000 iterations. As problem complexity increases (more robots, longer paths, larger maps), GA's computational requirements will grow proportionally with population size, potentially requiring distributed computing or GPU acceleration for practical deployment. SA's lighter computational footprint makes it more suitable for resource-constrained embedded systems or when solutions must be recomputed frequently during mission execution.
-\end{itemize}
-
-\subsubsection{Statistical Significance}
-
-The comparable standard deviations ($0.217$ for SA, $0.339$ for GA) indicate that both algorithms exhibit reasonable stability across multiple runs, with variance likely attributable to the stochastic nature of initial solution generation rather than algorithmic instability. The fact that GA maintains better mean fitness ($11.6484$) than SA's optimal fitness ($13.4304$) is particularly noteworthy—even GA's worst-case performance exceeds SA's best-case outcome, demonstrating GA's robust superiority for this problem class.
-
-With 20 independent runs, the statistical sample provides sufficient confidence to conclude that GA's performance advantage is systematic and reproducible. The consistent pattern—with GA outperforming SA across all runs—demonstrates that this performance difference is not due to random variation but reflects fundamental algorithmic strengths of population-based evolutionary search for multi-robot path planning problems.
-
-
-This comprehensive 20-run benchmark study demonstrates that the Genetic Algorithm achieves \textbf{16.7\% better solution quality} than Simulated Annealing for multi-robot path planning optimization, with the trade-off being approximately \textbf{30× longer computational time}. Both algorithms show comparable consistency (standard deviations $\sim$0.2-0.3), indicating reliable performance across different initial conditions.
-
-For offline mission planning scenarios where solution quality is paramount and preprocessing time is available, GA is the clear choice due to its superior optimization performance. For real-time applications requiring rapid solution generation, SA provides a computationally efficient alternative that delivers acceptable results in under 15 seconds. The results validate the GA implementation—particularly the population size of 100, one-point crossover per robot path, SUS parent selection, and balanced 10\% elitism/mutation rates—as highly effective for multi-robot coordination problems where solution quality justifies the computational investment.
 \subsection{Visualization}
 
 The visualization component provides real-time feedback on how the Genetic Algorithm (GA) explores the solution space and how the multi-robot paths evolve over time.
@@ -640,3 +565,59 @@ We ran ten case studies with varying team sizes and step counts using the shared
 
 \paragraph{Discussion:}
 Across all ten case studies ACO delivered the lowest cost and highest coverage, often by large margins (e.g., Case 1: 91.50\% vs 66.50\% GA and 60.00\% SA). GA consistently outperformed SA on both cost and coverage, but both lagged behind ACO, especially in smaller teams (Cases 3 and 10) where ACO’s pheromone/heuristic guidance drove markedly better dispersion. Longer runs (Case 4 with 300 iterations) continued to favor ACO, suggesting that the pheromone map converges to high-quality paths even with extended horizons.
+
+\subsection{Performance Indices}
+
+To rigorously evaluate the optimization performance and consistency of Simulated Annealing (SA), Genetic Algorithm (GA), and Ant Colony Optimization (ACO), we conducted a comprehensive benchmarking study with 20 independent runs of each algorithm. This section presents the comparative analysis of key performance metrics.
+
+\subsubsection{Benchmark Methodology}
+
+For each algorithm, we performed 20 independent runs using the configuration parameters from Case C1 (6 robots, 125 steps, $\alpha=3000$, $\beta=500$). Each run started from a different randomly generated feasible initial solution (for SA and GA) or constructed from scratch (for ACO) to ensure statistical independence. The following metrics were collected:
+
+\begin{itemize}
+    \item \textbf{Optimal Solution:} The robot positions that yielded the lowest cost across all runs
+    \item \textbf{Optimal Fitness Value:} The minimum cost achieved (lower is better for minimization)
+    \item \textbf{Mean Fitness:} Average cost across all 20 runs, indicating typical performance
+    \item \textbf{Standard Deviation:} Variance in fitness values, measuring algorithm consistency
+    \item \textbf{Computational Time:} Average execution time per run in seconds
+\end{itemize}
+
+\subsubsection{Performance Comparison Results}
+
+Table~\ref{tab:performance_indices_aco} presents the comparative performance metrics for all three algorithms over 20 independent runs.
+
+\begin{table}[H]
+\centering
+\caption{Function Minimization: Performance Indices (20 Runs)}
+\label{tab:performance_indices_aco}
+\begin{tabular}{|l|c|c|c|}
+\hline
+\textbf{Metric} & \textbf{Simulated Annealing} & \textbf{Genetic Algorithm} & \textbf{Ant Colony Optimization} \\
+\hline
+Optimal Solution & $(13, 8), (5, 7), \ldots$ & $(6, 2), (9, 0), \ldots$ & $(17, 19), (8, 13)\ldots$ \\
+\hline
+Optimal Fitness Value & $13.7049$ & $12.3180$ & $11.4888$ \\
+\hline
+Mean Fitness & $14.3852$ & $14.3379$ & $11.7522$ \\
+\hline
+Standard Deviation & $3.6271 \times 10^{-1}$ & $2.1899 \times 10^{0}$ & $1.1334 \times 10^{-1}$ \\
+\hline
+Computational Time & $34.867$ sec & $165.515$ sec & $130.991$ sec \\
+\hline
+\end{tabular}
+\end{table}
+
+\subsubsection{Analysis and Discussion}
+
+The benchmark results reveal significant differences in the optimization characteristics of the three algorithms:
+
+\begin{itemize}
+    \item \textbf{Solution Quality:} 
+    Ant Colony Optimization achieved the best optimal fitness value of $11.4888$, outperforming Genetic Algorithm ($12.3180$) and Simulated Annealing ($13.7049$). ACO's ability to construct solutions using both pheromone trails and heuristic information allows it to find superior paths that balance coverage and connectivity more effectively than the other methods.
+
+    \item \textbf{Consistency and Reliability:}
+    ACO demonstrated the highest consistency with the lowest standard deviation ($0.1133$), compared to SA ($0.3627$) and GA ($2.1899$). This indicates that ACO reliably converges to high-quality solutions across different runs, whereas GA exhibits significant variance, likely due to the stochastic nature of its crossover and mutation operators and the random initial population.
+
+    \item \textbf{Computational Efficiency:}
+    Simulated Annealing remains the fastest algorithm ($34.867$ sec), but its solution quality is the lowest. ACO ($130.991$ sec) is faster than GA ($165.515$ sec) while delivering significantly better results. This suggests that ACO offers a better trade-off between solution quality and computational time for this specific multi-robot path planning problem.
+\end{itemize}
