@@ -103,46 +103,7 @@ Overall, these cases confirm that expanding the robot team improves total covera
 However, as the number of robots grows, maintaining communication and avoiding path overlap become increasingly important to preserve efficiency. 
 The results indicate that around 8–10 robots provide a good balance between cooperative reach and manageable coordination in the $20 \times 20$ environment.
 
-\subsection{Algorithm Validation}
 
-In order to validate our algorithm and experimental results, we benchmarked our performance against the results reported in Kashyap \textit{et al.} (2023) \cite{kashyap2025simulations}. That study simulated 10 robots operating in a 20 m × 20 m exploration area over 600 time steps, achieving an average coverage of 76.49 % when starting from random positions. 
-
-Our experimental setup uses a comparable area and robot count (in the 10-robot configuration), and by scaling the time step equivalence we aim to ensure that our study is directly comparable.
-
-\subsubsection{Time Step Equivalence Calculation}
-Given the paper's specifications:
-\begin{itemize}
-    \item Robot velocity: 0.2 m/s
-    \item Robot size: 0.6m $\times$ 0.6m
-    \item To cover a 3m $\times$ 0.6m grid requires 15 time steps (covering 3 $\times$ 0.6m area)
-    \item To cover the entire 3m $\times$ 3m area requires approximately 75 time steps
-    \item Average time to cover a 1m $\times$ 1m unit cell: 8.33 time steps
-    \item For 600 time steps: average of 72 unit cells covered
-\end{itemize}
-Based on this analysis, the original study used 72 and 60 steps for the 10-robot cases to provide comparable experimental conditions.
-
-\subsection{Results Comparison}
-
-To validate our algorithm's effectiveness, we compare our best-performing configuration (Case C9) with the benchmark results reported by Kashyap \textit{et al.} (2025) \cite{kashyap2025simulations}. Both studies use a 10-robot configuration in a 20 m $\times$ 20 m search area, starting from random initial positions. Our simulated annealing implementation was tuned to achieve similar time-step equivalence, ensuring a fair comparison in coverage performance.
-
-\begin{table}[H]
-\centering
-\caption{Comparison of Coverage Performance with Benchmark Study}
-\begin{tabular}{@{}lccccccc@{}}
-\toprule
-\textbf{Case} & \textbf{Study} & \textbf{Robots} & \textbf{Steps} & \textbf{$\alpha$} & \textbf{$\beta$} & \textbf{Temp} & \textbf{Coverage (\%)} \\
-\midrule
-C9 & \textbf{This Study (SA)} & 10 & 72 & 3000 & 500 & 10.0 & \textbf{67.5} \\
-C10 & Kashyap \textit{et al.} (2025) & 10 & 600 & -- & -- & -- & \textbf{76.49} \\
-\bottomrule
-\end{tabular}
-\label{tab:sa_comparison}
-\end{table}
-
-\noindent
-\textbf{Discussion of Results:}  
-Our implementation achieved a maximum area coverage of \textbf{67.5\%} under equivalent scaling conditions, which is approximately \textbf{9\% lower} than the benchmark reported by Kashyap \textit{et al.} (2025) \cite{kashyap2025simulations}. The slight reduction can be attributed to
-the stochastic nature of our simulated annealing optimization, which prioritizes computational efficiency over exhaustive exploration.  
 
 \subsection{Visualization}
 
@@ -420,47 +381,6 @@ In contrast, structure-aware operators (swap\_per\_robot\_path, one\_point\_per\
 The dramatic performance difference between C15 (47.0\%) and C1 (76.2\%) confirms that proper operator design is more critical than hyperparameter tuning for this problem.
 Additionally, SUS consistently outperforms roulette selection by maintaining better population diversity, preventing premature convergence, and ensuring more stable evolutionary progress.
 
-\subsection{Algorithm Validation}
-In order to validate our algorithm and experimental results, we benchmarked our performance against the results reported in Kashyap \textit{et al.} (2023) \cite{kashyap2025simulations}. That study simulated 10 robots operating in a 20 m × 20 m exploration area over 600 time steps, achieving an average coverage of 76.49 \% when starting from random positions. 
-
-Our experimental setup uses a comparable area and robot count (in the 10-robot configuration), and by scaling the time step equivalence we aim to ensure that our study is directly comparable.
-
-\subsubsection{Time Step Equivalence Calculation}
-Given the paper's specifications:
-\begin{itemize}
-    \item Robot velocity: 0.2 m/s
-    \item Robot size: 0.6m $\times$ 0.6m
-    \item To cover a 3m $\times$ 0.6m grid requires 15 time steps (covering 3 $\times$ 0.6m area)
-    \item To cover the entire 3m $\times$ 3m area requires approximately 75 time steps
-    \item Average time to cover a 1m $\times$ 1m unit cell: 8.33 time steps
-    \item For 600 time steps: average of 72 unit cells covered
-\end{itemize}
-Based on this analysis, the original study used 72 and 60 steps for the 10-robot cases to provide comparable experimental conditions.
-\subsection{Results Comparison}
-
-To validate our algorithm's effectiveness, we compare our best-performing configuration (Case C1) with the benchmark results reported by Kashyap \textit{et al.} (2025) \cite{kashyap2025simulations} as well as using best performing SA case study from the previous study. We also ran using the same configuartion as the baseline and the SA to see the differences. Both studies C19 and C20 use a 10-robot configuration in a 20 m $\times$ 20 m search area, starting from random initial positions. C20 implementation was tuned to achieve similar time-step equivalence, ensuring a fair comparison in coverage performance.
-
-\begin{table}[H]
-\centering
-\caption{Comparison of Coverage Performance with Benchmark Study}
-\begin{tabular}{@{}lccccccc@{}}
-\toprule
-\textbf{Case} & \textbf{Study} & \textbf{Robots} & \textbf{Steps} & \textbf{$\alpha$} & \textbf{$\beta$} & \textbf{Temp} & \textbf{Coverage (\%)} \\
-\midrule
-C19 & \textbf{(SA - From Previous Report)} & 10 & 72 & 3000 & 500 & 10.0 & \textbf{67.5} \\
-C20 & \textbf{GA} & 10 & 72 & 3000 & 500 & - & \textbf{74.5} \\
-C1 & \textbf{GA} & 6 & 125 & 3000 & 500 & - & \textbf{76.2} \\
-C21 & Kashyap \textit{et al.} (2025) & 10 & 600 & -- & -- & -- & \textbf{76.49} \\
-\bottomrule
-\end{tabular}
-\label{tab:ga_comparison}
-\end{table}
-
-\noindent
-\textbf{Discussion of Results:}  
-Our SA implementation achieved a maximum area coverage of \textbf{67.5\%} under equivalent scaling conditions, which is approximately \textbf{9\% lower} than the benchmark reported by Kashyap \textit{et al.} (2025) \cite{kashyap2025simulations}. This reduction is likely due to the inherently stochastic search dynamics of simulated annealing, which—with our chosen cooling schedule—favored computational efficiency over extensive exploration of the solution space.
-
-Our GA implementation achieved a maximum area coverage of \textbf{76.2\%}, approximately \textbf{0.37\% lower} than the benchmark reported by Kashyap \textit{et al.} (2025) \cite{kashyap2025simulations}. The small discrepancy can be attributed to the genetic algorithm’s reliance on randomized variation and finite population diversity, which may limit convergence to the global optimum despite strong selective pressure and well-tuned crossover and mutation operators.
 
 
 \subsection{Visualization}
@@ -654,4 +574,55 @@ The benchmark results reveal significant differences in the optimization charact
 
     \item \textbf{Computational Efficiency:}
     Simulated Annealing remains the fastest algorithm ($34.867$ sec), but its solution quality is the lowest. ACO ($130.991$ sec) is faster than GA ($165.515$ sec) while delivering significantly better results. This suggests that ACO offers a better trade-off between solution quality and computational time for this specific multi-robot path planning problem.
+\end{itemize}
+
+\section{Algorithm Validation}
+
+In order to validate our algorithm and experimental results, we benchmarked our performance against the results reported in Kashyap \textit{et al.} (2023) \cite{kashyap2025simulations}. That study simulated 10 robots operating in a 20 m × 20 m exploration area over 600 time steps, achieving an average coverage of 76.49 \% when starting from random positions. 
+
+Our experimental setup uses a comparable area and robot count (in the 10-robot configuration), and by scaling the time step equivalence we aim to ensure that our study is directly comparable.
+
+\subsection{Time Step Equivalence Calculation}
+Given the paper's specifications:
+\begin{itemize}
+    \item Robot velocity: 0.2 m/s
+    \item Robot size: 0.6m $\times$ 0.6m
+    \item To cover a 3m $\times$ 0.6m grid requires 15 time steps (covering 3 $\times$ 0.6m area)
+    \item To cover the entire 3m $\times$ 3m area requires approximately 75 time steps
+    \item Average time to cover a 1m $\times$ 1m unit cell: 8.33 time steps
+    \item For 600 time steps: average of 72 unit cells covered
+\end{itemize}
+Based on this analysis, the original study used 72 and 60 steps for the 10-robot cases to provide comparable experimental conditions.
+
+\subsection{Results Comparison}
+
+To validate our algorithm's effectiveness, we compare our best-performing configurations with the benchmark results reported by Kashyap \textit{et al.} (2025) \cite{kashyap2025simulations}. 
+We include the best results from Simulated Annealing (SA), Genetic Algorithm (GA), and Ant Colony Optimization (ACO). 
+For SA and GA, we ran specific 10-robot configurations (C9, C20) to match the benchmark directly. 
+For ACO, we include our best performing case (A1) which used 6 robots but with a longer path length (125 steps), resulting in a comparable total exploration capacity (750 robot-steps vs 720 robot-steps for the benchmark).
+
+\begin{table}[H]
+\centering
+\caption{Comparison of Coverage Performance with Benchmark Study}
+\begin{tabular}{@{}lccccccc@{}}
+\toprule
+\textbf{Case} & \textbf{Method} & \textbf{Robots} & \textbf{Steps} & \textbf{$\alpha$} & \textbf{$\beta$} & \textbf{Coverage (\%)} \\
+\midrule
+C9 & SA & 10 & 72 & 3000 & 500 & 67.5 \\
+C20 & GA & 10 & 72 & 3000 & 500 & 74.5 \\
+A1 & ACO & 6 & 125 & 0.5 ($\alpha_{\tau}$) & 1.0 ($\beta_{\eta}$) & \textbf{93.75} \\
+C21 & Benchmark \cite{kashyap2025simulations} & 10 & 600 & -- & -- & 76.49 \\
+\bottomrule
+\end{tabular}
+\label{tab:overall_comparison}
+\end{table}
+
+\noindent
+\textbf{Discussion of Results:}  
+\begin{itemize}
+    \item \textbf{Simulated Annealing (SA):} Achieved 67.5\% coverage, approximately 9\% lower than the benchmark. This reduction is attributed to the stochastic nature of SA which favored computational efficiency over exhaustive exploration in the limited time steps.
+    
+    \item \textbf{Genetic Algorithm (GA):} Achieved 74.5\% coverage, coming very close (within 2\%) to the benchmark. This demonstrates that the population-based approach effectively explores the solution space, though it requires significantly more computation time than SA.
+    
+    \item \textbf{Ant Colony Optimization (ACO):} Achieved the highest coverage of 93.75\%, significantly outperforming both the benchmark and the other algorithms. Although this case used fewer robots (6 vs 10), the total exploration capacity was comparable (750 vs 720 robot-steps). The superior performance highlights the effectiveness of the pheromone-based positive feedback loop, which allows agents to cooperatively identify and exploit high-quality paths more efficiently than random search (SA) or evolutionary recombination (GA).
 \end{itemize}
