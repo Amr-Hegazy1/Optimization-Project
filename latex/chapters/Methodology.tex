@@ -496,7 +496,7 @@ The \textbf{Ant Colony Optimization (ACO)} module constructs paths for all robot
 \begin{algorithm}[H]
 \caption{Ant Colony Optimization for Multi-Robot Path Planning}
 \begin{algorithmic}[1]
-\State \textbf{Input:} Number of ants $m$, iterations $N_{max}$, $\alpha$ (pheromone weight), $\beta$ (heuristic weight), evaporation rate $\rho$, strategy $\in\{$SACO, AS$\}$
+\State \textbf{Input:} Number of ants $m$, iterations $N_{max}$, $\alpha_{\tau}$ (pheromone weight), $\beta_{\eta}$ (heuristic weight), evaporation rate $\rho$, strategy $\in\{$SACO, AS$\}$
 \State Initialize pheromone map $\tau$ to $1.0$ for all cells; build heuristic map $\eta$ (unexplored $>$ free $>$ obstacle)
 \State \textbf{Initialize:} $best\_cost \gets \infty$, $best\_path \gets \varnothing$
 \For{$iter = 1$ to $N_{max}$}
@@ -506,7 +506,7 @@ The \textbf{Ant Colony Optimization (ACO)} module constructs paths for all robot
             \State $p \gets$ initial position of robot $r$
             \For{$t = 1$ to $K$ steps}
                 \State $F \gets$ feasible moves from $p$ (stay or 4-connected within bounds)
-                \State Compute weight $w = \tau^{\alpha} \cdot \eta^{\beta}$ for each move (omit $\eta$ when SACO)
+                \State Compute weight $w = \tau^{\alpha_{\tau}} \cdot \eta^{\beta_{\eta}}$ for each move (omit $\eta$ when SACO)
                 \State Sample move via roulette-wheel on $w$
                 \State Apply move, update $p$; if AS, apply local decay on $\tau$ at $p$
             \EndFor
@@ -524,10 +524,10 @@ The \textbf{Ant Colony Optimization (ACO)} module constructs paths for all robot
 
 \subsection{Implementation Details}
 \begin{itemize}
-    \item \textbf{Move sampling:} \texttt{AntColonyStrategy.select\_move()} computes weights from $\tau^{\alpha}$ (SACO) or $\tau^{\alpha}\eta^{\beta}$ (AS). Moves are drawn with roulette-wheel sampling; if all weights vanish, a random feasible move is chosen.
+    \item \textbf{Move sampling:} \texttt{AntColonyStrategy.select\_move()} computes weights from $\tau^{\alpha_{\tau}}$ (SACO) or $\tau^{\alpha_{\tau}}\eta^{\beta_{\eta}}$ (AS). Moves are drawn with roulette-wheel sampling; if all weights vanish, a random feasible move is chosen.
     \item \textbf{Heuristic map:} \texttt{\_build\_heuristic\_map()} assigns 2.0 to unexplored, 1.2 to free space, and $10^{-6}$ to obstacles to discourage infeasible cells.
     \item \textbf{Evaporation and updates:} \texttt{before\_iteration()} applies uniform evaporation. \texttt{ASStrategy.local\_after\_move()} applies per-move decay toward the initial pheromone. Both strategies call \texttt{update\_local\_pheromone()} after constructing a full path, depositing $(1/(1+\text{cost}))$ on visited cells (scaled by heuristic for AS).
-    \item \textbf{Global reinforcement:} \texttt{ASStrategy.after\_iteration()} reinforces the iteration-best path with factor $(1+\beta)/(1+\text{cost})$ while re-applying evaporation; SACO relies solely on local deposits plus the global evaporation step.
+    \item \textbf{Global reinforcement:} \texttt{ASStrategy.after\_iteration()} reinforces the iteration-best path with factor $(1+\beta_{\eta})/(1+\text{cost})$ while re-applying evaporation; SACO relies solely on local deposits plus the global evaporation step.
     \item \textbf{Feasibility:} \texttt{\_get\_feasible\_moves()} restricts motion to in-bounds 4-connected moves; collision/energy/obstacle feasibility is enforced in the shared cost function.
     \item \textbf{Interfaces:} Inherits visualization/cost utilities from \texttt{BaseOptimizer}; maintains ant moves as an $(m \times R \times K)$ array and converts to positions with \texttt{movements\_to\_positions()} for scoring.
 \end{itemize}

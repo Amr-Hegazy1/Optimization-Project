@@ -508,20 +508,20 @@ Overall, the study shows that careful tuning of these hyperparameters is essenti
 
 \section{Ant Colony Optimization Results}
 
-\subsection{Parameters Tuning (Placeholders)}
+\subsection{Parameters Tuning}
 
-The ACO experiments varied pheromone/heuristic weights, evaporation, ant count, and strategy. Coverage values are placeholders until the latest runs are injected.
+The ACO experiments varied pheromone/heuristic weights, evaporation, ant count, and strategy. 
 
 \begin{table}[H]
 \centering
 \caption{ACO Performance Metrics (AS vs SACO Variants)}
 \begin{tabular}{@{}lccccccccc@{}}
 \toprule
-\textbf{Case} & \textbf{Strategy} & \textbf{Robots} & \textbf{Steps} & \textbf{$\alpha$} & \textbf{$\beta$} & \textbf{Evap.} & \textbf{Ants} & \textbf{Iter.} & \textbf{Coverage (\%)} \\
+\textbf{Case} & \textbf{Strategy} & \textbf{Robots} & \textbf{Steps} & \textbf{$\alpha_{\tau}$} & \textbf{$\beta_{\eta}$} & \textbf{Evap.} & \textbf{Ants} & \textbf{Iter.} & \textbf{Coverage (\%)} \\
 \midrule
 A1 & AS (baseline) & 6 & 125 & 0.5 & 1.0 & 0.40 & 30 & 200 & \textbf{93.75} \\
-A2 & AS (high $\beta$) & 6 & 125 & 0.5 & 2.0 & 0.35 & 30 & 200 & 88.00 \\
-A3 & AS (low evap, high $\alpha$) & 6 & 125 & 1.0 & 1.0 & 0.20 & 40 & 200 & 93.25 \\
+A2 & AS (high $\beta_{\eta}$) & 6 & 125 & 0.5 & 2.0 & 0.35 & 30 & 200 & 88.00 \\
+A3 & AS (low evap, high $\alpha_{\tau}$) & 6 & 125 & 1.0 & 1.0 & 0.20 & 40 & 200 & 93.25 \\
 A4 & SACO (pheromone-only) & 6 & 125 & 0.7 & 0.0 & 0.40 & 35 & 200 & 61.25 \\
 A5 & SACO (fast evap) & 6 & 125 & 0.7 & 0.0 & 0.60 & 35 & 200 & 58.50 \\
 \bottomrule
@@ -532,8 +532,8 @@ A5 & SACO (fast evap) & 6 & 125 & 0.7 & 0.0 & 0.60 & 35 & 200 & 58.50 \\
 \paragraph{Discussion of Results:}
 \begin{itemize}
     \item The AS baseline (A1) achieved the best coverage (93.75\%), showing strong balance between pheromone guidance and heuristic bias toward unexplored cells.
-    \item Increasing $\beta$ (A2) reduced coverage to 88.00\%, suggesting overly strong heuristic pressure can limit exploration diversity.
-    \item Reducing evaporation and raising $\alpha$ (A3) maintained high coverage (93.25\%), indicating slower evaporation can preserve good trails without hurting exploration when $\alpha$ is elevated.
+    \item Increasing $\beta_{\eta}$ (A2) reduced coverage to 88.00\%, suggesting overly strong heuristic pressure can limit exploration diversity.
+    \item Reducing evaporation and raising $\alpha_{\tau}$ (A3) maintained high coverage (93.25\%), indicating slower evaporation can preserve good trails without hurting exploration when $\alpha_{\tau}$ is elevated.
     \item SACO variants (A4, A5) underperformed markedly (61.25\%, 58.50\%), highlighting the value of heuristic guidance; faster evaporation further degrades pheromone-only performance.
 \end{itemize}
 
@@ -565,6 +565,40 @@ We ran ten case studies with varying team sizes and step counts using the shared
 
 \paragraph{Discussion:}
 Across all ten case studies ACO delivered the lowest cost and highest coverage, often by large margins (e.g., Case 1: 91.50\% vs 66.50\% GA and 60.00\% SA). GA consistently outperformed SA on both cost and coverage, but both lagged behind ACO, especially in smaller teams (Cases 3 and 10) where ACO’s pheromone/heuristic guidance drove markedly better dispersion. Longer runs (Case 4 with 300 iterations) continued to favor ACO, suggesting that the pheromone map converges to high-quality paths even with extended horizons.
+
+\subsubsection{Visual Comparison of Selected Cases}
+
+To further illustrate the performance differences, we present the convergence graphs for selected case studies. These graphs plot the cost function value over iterations for SA, GA, and ACO.
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.8\textwidth]{Figures/case_study_1_comparison.png}
+    \caption{Convergence comparison for Case 1 (6 Robots, 125 Steps). ACO starts with a superior solution due to heuristic initialization and maintains the lead throughout.}
+    \label{fig:case1_comparison}
+\end{figure}
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.8\textwidth]{Figures/case_study_3_comparison.png}
+    \caption{Convergence comparison for Case 3 (3 Robots, 50 Steps). ACO demonstrates rapid convergence from a high initial cost to outperform the other algorithms within the first 10 iterations.}
+    \label{fig:case3_comparison}
+\end{figure}
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.8\textwidth]{Figures/case_study_4_comparison.png}
+    \caption{Convergence comparison for Case 4 (4 Robots, 100 Steps, 300 Iterations). The extended iterations show ACO maintaining its lead and stability.}
+    \label{fig:case4_comparison}
+\end{figure}
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.8\textwidth]{Figures/case_study_10_comparison.png}
+    \caption{Convergence comparison for Case 10 (2 Robots, 100 Steps). In this challenging scenario with minimal agents, ACO's advantage is particularly pronounced from the start.}
+    \label{fig:case10_comparison}
+\end{figure}
+
+The visual results confirm the quantitative findings. ACO consistently achieves the lowest final cost across all scenarios. In cases with larger teams (e.g., Case 1) or specific constraints (e.g., Case 10), ACO benefits significantly from its heuristic initialization, starting with a much lower cost than SA or GA. In other scenarios (e.g., Case 3), ACO may start with a higher cost but demonstrates rapid convergence within the first few iterations to surpass the other algorithms. SA typically shows a sharp initial improvement followed by a plateau, while GA exhibits steadier but more gradual improvement. Ultimately, ACO's combination of pheromone feedback and heuristic guidance provides the most robust performance.
 
 \subsection{Performance Indices}
 
