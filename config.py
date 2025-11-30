@@ -3,6 +3,7 @@ Configuration file for Multi-Robot Path Planning Optimization.
 
 Modify these parameters to customize the optimization behavior.
 """
+import numpy as np
 
 # ============================================================================
 # ENVIRONMENT CONFIGURATION
@@ -38,6 +39,8 @@ PHYSICAL_MAP = [
     [1, 1, 1, 1, 1, 3, 2, 1, 1, 2, 1, 1, 1, 1, 1, 2, 2, 1, 1, 1]   # Robot 5
 ]
 
+MAP = np.zeros((MAP_HEIGHT, MAP_WIDTH))
+
 # Robot configuration
 ROBOT_INITIAL_POSITIONS = [
     (5, 0),   # Robot 1
@@ -47,6 +50,8 @@ ROBOT_INITIAL_POSITIONS = [
     (19, 5),  # Robot 5
     (15, 19)  # Robot 6
 ]
+
+R = len(ROBOT_INITIAL_POSITIONS)  # Number of robots
 
 # Path length (Number of steps)
 PATH_LENGTH = 100
@@ -106,6 +111,36 @@ SA_MIN_TEMPERATURE = 0.1
 SA_MAX_ITERATIONS = 5000
 
 
+# ============================================================================
+# GENETIC ALGORITHM PARAMETERS
+# ============================================================================
+
+GA_POPULATION_SIZE = 20
+GA_GENERATION_SIZE = 200
+GA_MUTATION_RATE = 0.3
+GA_ELITE_RATE = 0.1
+GA_MUTATION_METHOD = "swap_per_robot_path"
+GA_PARENT_SELECTION_METHOD = "sus"
+GA_CROSSOVER_METHOD = "one_point_per_robots_paths"
+
+
+# ============================================================================
+# ANT COLONY OPTIMIZATION PARAMETERS
+# ============================================================================
+
+ACO_MAX_ITERATIONS = 200
+ACO_NUM_ANTS = 30
+ACO_ALPHA = 0.5
+ACO_BETA = 0.0
+ACO_EVAPORATION_RATE = 0.4
+ACO_STRATEGY = "as"  # Options: "saco" (Simple ACO), "as" (Ant System)
+
+
+# ============================================================================
+# APPLICATION RUNTIME PARAMETERS
+# ============================================================================
+
+OPTIMIZER_TYPE = "aco"  # Options: "sa", "ga", "aco"
 
 
 # ============================================================================
@@ -113,7 +148,7 @@ SA_MAX_ITERATIONS = 5000
 # ============================================================================
 
 # Enable/disable real-time visualization (set to False for faster optimization)
-ENABLE_VISUALIZATION = True
+ENABLE_VISUALIZATION = False
 
 # Fast mode: Run optimization at full speed, then replay visualization afterwards
 # When True: No real-time visualization updates during optimization, much faster

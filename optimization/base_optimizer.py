@@ -6,7 +6,19 @@ the required abstract methods to ensure a consistent interface.
 """
 
 from abc import ABC, abstractmethod
+import math
+import random
+from collections import deque
+from typing import Iterable, List, Optional, Sequence, Set, Tuple
+
 import numpy as np
+
+from config import *
+
+Position = Tuple[int, int]
+MovementSequence = Sequence[int]
+MovementArray = Sequence[MovementSequence]
+PathArray = np.ndarray
 
 
 class BaseOptimizer(ABC):
@@ -149,3 +161,304 @@ class BaseOptimizer(ABC):
         return {
             'max_iterations': self.max_iterations
         }
+        
+    @staticmethod
+    def valid_move(p1: Position, p2: Position) -> bool:
+        """Return True when p2 is identical to or 4-connected with p1."""
+        dx = abs(p1[0] - p2[0])
+        dy = abs(p1[1] - p2[1])
+        return dx + dy <= 1
+
+    @staticmethod
+    def euclidean_distance(p1: Position, p2: Position) -> float:
+        """Compute Euclidean distance between two grid positions."""
+        return math.sqrt((p1[0] - p2[0]) ** 2 + (p1[1] - p2[1]) ** 2)
+
+    @staticmethod
+    def manhattan_distance(p1: Position, p2: Position) -> int:
+        """Compute Manhattan distance between two grid positions."""
+        return abs(p1[0] - p2[0]) + abs(p1[1] - p2[1])
+
+    @staticmethod
+    def movements_to_positions(
+        movements_array: MovementArray,
+        initial_positions: Optional[Sequence[Position]] = None,
+    ) -> PathArray:
+        """Convert movement indices to concrete position paths."""
+        initial_positions = initial_positions or ROBOT_INITIAL_POSITIONS
+        path_array: List[List[Position]] = []
+        for r, moves in enumerate(movements_array):
+            x, y = initial_positions[r]
+            robot_path: List[Position] = []
+            for move_idx in moves:
+                dx, dy = MOVES[move_idx]
+                x = max(0, min(MAP_HEIGHT - 1, x + dx))
+                y = max(0, min(MAP_WIDTH - 1, y + dy))
+                robot_path.append((x, y))
+            path_array.append(robot_path)
+        return np.array(path_array, dtype=object)
+
+    @staticmethod
+    def positions_to_movements(
+        path_array: Sequence[Sequence[Position]],
+        initial_positions: Optional[Sequence[Position]] = None,
+    ) -> np.ndarray:
+        """Convert absolute paths back to movement indices."""
+        initial_positions = initial_positions or ROBOT_INITIAL_POSITIONS
+        movements_array: List[List[int]] = []
+        for r, path in enumerate(path_array):
+            x_prev, y_prev = initial_positions[r]
+            robot_moves: List[int] = []
+            for x, y in path:
+                dx, dy = x - x_prev, y - y_prev
+                move_idx = MOVES.index((dx, dy)) if (dx, dy) in MOVES else len(MOVES) - 1
+                robot_moves.append(move_idx)
+                x_prev, y_prev = x, y
+            movements_array.append(robot_moves)
+        return np.array(movements_array, dtype=object)
+
+    @classmethod
+    def create_initial_random_path(
+        cls,
+        max_attempts: int = 1000,
+        initial_positions: Optional[Sequence[Position]] = None,
+        path_length: Optional[int] = None,
+    ) -> PathArray:
+        """Generate a random feasible path array for all robots."""
+        initial_positions = initial_positions or ROBOT_INITIAL_POSITIONS
+        path_length = path_length or PATH_LENGTH
+        attempt = 0
+        candidate: PathArray = np.empty((0,), dtype=object)
+        while attempt < max_attempts:
+            attempt += 1
+            path_array: List[List[Position]] = []
+            for start_x, start_y in initial_positions:
+                robot_path: List[Position] = []
+                x, y = start_x, start_y
+                for _ in range(path_length):
+                    valid_moves = []
+                    for move in MOVES:
+                        nx, ny = x + move[0], y + move[1]
+                        if 0 <= nx < MAP_HEIGHT and 0 <= ny < MAP_WIDTH:
+                            valid_moves.append(move)
+                    move_dx, move_dy = random.choice(valid_moves)
+                    x += move_dx
+                    y += move_dy
+                    robot_path.append((x, y))
+                path_array.append(robot_path)
+            candidate = np.array(path_array, dtype=object)
+            if cls.is_feasible(candidate, initial_positions=initial_positions, path_length=path_length):
+                print(f"Found feasible initial path after {attempt} attempt(s).")
+                return candidate
+        print("Warning: No feasible initial path found after many attempts. Returning last attempt.")
+        return candidate
+
+    @classmethod
+    def create_dummy_solution(
+        cls,
+        max_attempts: int = 1000,
+        initial_positions: Optional[Sequence[Position]] = None,
+        path_length: Optional[int] = None,
+    ) -> PathArray:
+        """Return a feasible path array suitable for bootstrapping optimizers."""
+        return cls.create_initial_random_path(
+            max_attempts=max_attempts,
+            initial_positions=initial_positions,
+            path_length=path_length,
+        )
+
+    @staticmethod
+    def compute_energy_used(path: Sequence[Position], initial_pos: Position) -> np.ndarray:
+        """Compute cumulative Manhattan distance per timestep for a single path."""
+        energy = np.zeros(len(path))
+        for t, pos in enumerate(path):
+            if t == 0:
+                energy[t] = BaseOptimizer.manhattan_distance(initial_pos, pos)
+            else:
+                energy[t] = energy[t - 1] + BaseOptimizer.manhattan_distance(path[t - 1], pos)
+        return energy
+
+    @staticmethod
+    def compute_link_weight(distance: float, communication_radius: float) -> float:
+        """Return inverse-distance link quality within the communication radius."""
+        if distance <= communication_radius:
+            return 1.0 / (1.0 + distance)
+        return 0.0
+
+    @staticmethod
+    def find_connected_components(adj_matrix: np.ndarray) -> List[Set[int]]:
+        """Return connected components for an adjacency matrix using BFS."""
+        n_robots = len(adj_matrix)
+        visited: Set[int] = set()
+        components: List[Set[int]] = []
+        for start in range(n_robots):
+            if start in visited:
+                continue
+            component: Set[int] = set()
+            queue: deque[int] = deque([start])
+            component.add(start)
+            visited.add(start)
+            while queue:
+                node = queue.popleft()
+                for neighbor in range(n_robots):
+                    if adj_matrix[node][neighbor] > 0 and neighbor not in visited:
+                        visited.add(neighbor)
+                        component.add(neighbor)
+                        queue.append(neighbor)
+            components.append(component)
+        return components
+
+    @classmethod
+    def compute_disconnection_penalty(
+        cls,
+        path_array: PathArray,
+        path_length: Optional[int] = None,
+    ) -> float:
+        """Return cumulative distance robots must travel to reconnect to the main network."""
+        penalty = 0.0
+        horizon = path_array.shape[1]
+        for t in range(horizon):
+            positions_t = [path_array[i][t] for i in range(path_array.shape[0])]
+            adj_matrix = np.zeros((path_array.shape[0], path_array.shape[0]))
+            for i in range(path_array.shape[0]):
+                for j in range(i + 1, path_array.shape[0]):
+                    dist = cls.euclidean_distance(positions_t[i], positions_t[j])
+                    if dist <= CONNECTIVITY_THRESHOLD:
+                        adj_matrix[i][j] = 1
+                        adj_matrix[j][i] = 1
+            components = cls.find_connected_components(adj_matrix)
+            if len(components) == 1:
+                continue
+            main_component = max(components, key=len)
+            for i in range(path_array.shape[0]):
+                if i in main_component:
+                    continue
+                min_dist = min(
+                    cls.euclidean_distance(positions_t[i], positions_t[j]) for j in main_component
+                )
+                penalty += min_dist
+        return penalty
+
+    @classmethod
+    def compute_obstacle_penalty(
+        cls, path_array: PathArray, path_length: Optional[int] = None
+    ) -> int:
+        """Count visits to obstacle cells across all robots and timesteps."""
+        penalty = 0
+        horizon = path_length or PATH_LENGTH
+        for r in range(path_array.shape[0]):
+            for t in range(horizon):
+                x, y = path_array[r][t]
+                if MAP[x, y] == 2:
+                    penalty += 1
+        return penalty
+
+    @classmethod
+    def is_feasible(
+        cls,
+        path_array: PathArray,
+        initial_positions: Optional[Sequence[Position]] = None,
+        path_length: Optional[int] = None,
+    ) -> bool:
+        """Validate all hard constraints (bounds, motion, energy, obstacles, collisions)."""
+        initial_positions = initial_positions or ROBOT_INITIAL_POSITIONS
+        horizon = path_array.shape[1]
+        occupied = {}
+
+        for r in range(path_array.shape[0]):
+            path = path_array[r]
+            initial_pos = initial_positions[r]
+            if not cls.valid_move(initial_pos, path[0]):
+                return False
+            energy_used = cls.compute_energy_used(path, initial_pos)
+            for t in range(horizon):
+                x, y = path[t]
+                if not (0 <= x < MAP_HEIGHT and 0 <= y < MAP_WIDTH):
+                    return False
+                if t > 0 and not cls.valid_move(path[t - 1], path[t]):
+                    return False
+                if energy_used[t] > ENERGY_BUDGET:
+                    return False
+                if MAP[x, y] == 2:
+                    return False
+                if (x, y, t) in occupied:
+                    return False
+                occupied[(x, y, t)] = r
+        return True
+
+    @classmethod
+    def cost_function(cls, path_array: PathArray, visualize: bool = False) -> float:
+        """Evaluate the multi-objective cost for a path array; lower is better."""
+        if not cls.is_feasible(path_array):
+            return float("inf")
+        visited_unexplored = set()
+        for r in range(path_array.shape[0]):
+            for t in range(path_array.shape[1]):
+                x, y = path_array[r][t]
+                if MAP[x, y] == 0:
+                    visited_unexplored.add((x, y))
+        coverage_count = len(visited_unexplored)
+        connectivity_sum = 0.0
+        for t in range(path_array.shape[1]):
+            positions_t = [path_array[i][t] for i in range(path_array.shape[0])]
+            for i in range(path_array.shape[0]):
+                for j in range(i + 1, path_array.shape[0]):
+                    dist = cls.euclidean_distance(positions_t[i], positions_t[j])
+                    connectivity_sum += cls.compute_link_weight(dist, COMMUNICATION_RADIUS)
+        disconnection_penalty = cls.compute_disconnection_penalty(path_array)
+        epsilon = 1e-6
+        coverage_cost = ALPHA / (coverage_count + epsilon)
+        connectivity_cost = BETA / (connectivity_sum + epsilon)
+        disconnection_cost = GAMMA * disconnection_penalty
+        cost = coverage_cost + connectivity_cost + disconnection_cost
+        if visualize:
+            cls.visualize_coverage(visited_unexplored, path_array)
+            print("\nCost Breakdown (lower is better):")
+            print(f"  Coverage count: {coverage_count}")
+            print(f"  Connectivity sum: {connectivity_sum:.2f}")
+            print(f"  Disconnection penalty: {disconnection_penalty:.2f}")
+            print("  ---")
+            print(f"  Coverage cost (α/{coverage_count}): {coverage_cost:.6f}")
+            print(
+                f"  Connectivity cost (β/{connectivity_sum:.2f}): {connectivity_cost:.6f}"
+            )
+            print(
+                f"  Disconnection cost (γ*{disconnection_penalty:.2f}): {disconnection_cost:.6f}"
+            )
+            print("  ---")
+            print(f"  Total Cost: {cost:.6f}")
+        return cost
+
+    @staticmethod
+    def visualize_coverage(visited_unexplored: Set[Position], path_array: PathArray) -> None:
+        """Print a textual coverage summary including final robot positions."""
+        print("\nVisualizing Coverage Map...")
+        final_positions = {}
+        for r in range(path_array.shape[0]):
+            final_pos = tuple(path_array[r][-1])
+            final_positions[final_pos] = r + 1
+        print("\n" + "=" * 50)
+        print(f"Coverage Map ({MAP_HEIGHT}x{MAP_WIDTH})")
+        print("=" * 50)
+        print("   ", end="")
+        for j in range(MAP_WIDTH):
+            print(f"{j:2}", end=" ")
+        print()
+        for i in range(MAP_HEIGHT):
+            print(f"{i:2} ", end="")
+            for j in range(MAP_WIDTH):
+                if (i, j) in final_positions:
+                    print(f"R{final_positions[(i, j)]}", end=" ")
+                elif (i, j) in visited_unexplored:
+                    print(" *", end=" ")
+                elif MAP[i, j] == 2:
+                    print(" #", end=" ")
+                else:
+                    print(" .", end=" ")
+            print()
+        print("=" * 50)
+        total_cells = MAP_HEIGHT * MAP_WIDTH
+        explored_pct = len(visited_unexplored) * 100 / total_cells
+        print(f"Cells explored: {len(visited_unexplored)}/{total_cells} ({explored_pct:.1f}%)")
+        print("R* = Final robot position, * = Explored, # = Obstacle, . = Unexplored")
+        print("=" * 50 + "\n")
