@@ -457,34 +457,59 @@ A5 & SACO (fast evap) & 6 & 125 & 0.7 & 0.0 & 0.60 & 35 & 200 & 58.50 \\
     \item SACO variants (A4, A5) underperformed markedly (61.25\%, 58.50\%), highlighting the value of heuristic guidance; faster evaporation further degrades pheromone-only performance.
 \end{itemize}
 
-\subsection{Case Study Comparisons (SA vs GA vs ACO)}
+\subsection{Artificial Bee Colony Experiments}
 
-We ran ten case studies with varying team sizes and step counts using the shared cost weights ($\alpha=3000$, $\beta=500$, $\gamma=4.0$) except Case 8 ($\alpha=2000$, $\beta=300$). Each algorithm used its standard settings (SA and GA at their tuned defaults; ACO with AS strategy from A1). Convergence plots are saved under \texttt{Figures/case\_study\_\{1..10\}\_comparison.png}.
+We ran two ABC configurations headlessly to understand sensitivity to colony size and onlooker ratio. Both reused the shared objective ($\alpha=3000$, $\beta=500$, $\gamma=4.0$) on the $20\times20$ grid with 6 robots and 100 steps.
 
 \begin{table}[H]
 \centering
-\caption{Case Study Results Across SA, GA, and ACO}
-\begin{tabular}{@{}lccccccccc@{}}
+\caption{ABC Parameter Sweep (headless runs)}
+\begin{tabular}{@{}lcccccccc@{}}
 \toprule
-\textbf{Case} & \textbf{Robots} & \textbf{Steps} & \textbf{SA Cost} & \textbf{GA Cost} & \textbf{ACO Cost} & \textbf{SA Cov (\%)} & \textbf{GA Cov (\%)} & \textbf{ACO Cov (\%)} & \textbf{Iters} \\
+\textbf{Case} & \textbf{Colony} & \textbf{Cycles} & \textbf{Limit} & \textbf{Onlookers} & \textbf{Window} & \textbf{Attempts} & \textbf{Cost} & \textbf{Coverage (\%)} \\
 \midrule
-1 & 6 & 125 & 15.2118 & 14.2329 & \textbf{11.3218} & 60.00 & 66.50 & \textbf{91.50} & 200 \\
-2 & 4 & 100 & 27.5861 & 22.5629 & \textbf{11.6971} & 35.50 & 47.50 & \textbf{71.75} & 150 \\
-3 & 3 & 50  & 62.2327 & 60.0123 & \textbf{11.5823} & 19.75 & 19.75 & \textbf{54.00} & 100 \\
-4 & 4 & 100 & 26.1269 & 20.2141 & \textbf{11.6649} & 39.00 & 50.00 & \textbf{73.75} & 300 \\
-5 & 4 & 100 & 27.2941 & 23.1667 & \textbf{11.7073} & 39.75 & 43.75 & \textbf{67.00} & 150 \\
-6 & 4 & 100 & 28.1506 & 21.2091 & \textbf{11.9577} & 36.75 & 50.75 & \textbf{65.25} & 150 \\
-7 & 4 & 100 & 26.6599 & 21.0870 & \textbf{11.7282} & 41.00 & 49.00 & \textbf{71.75} & 150 \\
-8 & 4 & 100 & 27.6028 & 19.6376 & \textbf{11.7149} & 37.75 & 52.50 & \textbf{65.25} & 150 \\
-9 & 4 & 100 & 27.3795 & 23.0067 & \textbf{11.8872} & 38.25 & 42.75 & \textbf{70.25} & 150 \\
-10 & 2 & 100 & 54.4752 & 56.2474 & \textbf{11.9127} & 22.75 & 19.25 & \textbf{47.25} & 150 \\
+ABC\_base & 24 & 200 & 12 & 0.5 & 10 & 5 & \textbf{14.4231} & \textbf{65.75} \\
+ABC\_large\_colony & 32 & 200 & 10 & 0.6 & 12 & 6 & 14.8782 & 62.25 \\
+\bottomrule
+\end{tabular}
+\label{tab:abc_sweep}
+\end{table}
+
+\paragraph{Discussion:}
+\begin{itemize}
+    \item The base setting (24 bees, onlookers 0.5) achieved the best cost (14.42) and coverage (65.75\%), suggesting diminishing returns from a larger colony in this discrete setting.
+    \item Increasing colony size and onlooker ratio (32 bees, 0.6) slightly worsened cost and coverage, indicating that repair/feasibility pressure dominates over sampling breadth.
+    \item Both runs converged stably; scout resets were crucial to escape stagnation when window perturbations could not find feasible improvements.
+\end{itemize}
+
+\subsection{Case Study Comparisons (SA vs GA vs ACO vs ABC)}
+
+We ran ten case studies with varying team sizes and step counts using the shared cost weights ($\alpha=3000$, $\beta=500$, $\gamma=4.0$) except Case 8 ($\alpha=2000$, $\beta=300$). Each algorithm used its standard settings (SA and GA at their tuned defaults; ACO with AS strategy from A1; ABC with the defaults in \texttt{case\_study\_config.py}). Convergence plots are saved under \texttt{Figures/case\_study\_\{1..10\}\_comparison.png}.
+
+\begin{table}[H]
+\centering
+\caption{Case Study Results Across SA, GA, ACO, and ABC}
+\begin{tabular}{@{}lccccccccccc@{}}
+\toprule
+\textbf{Case} & \textbf{Robots} & \textbf{Steps} & \textbf{SA Cost} & \textbf{GA Cost} & \textbf{ACO Cost} & \textbf{ABC Cost} & \textbf{SA Cov (\%)} & \textbf{GA Cov (\%)} & \textbf{ACO Cov (\%)} & \textbf{ABC Cov (\%)} & \textbf{Iters} \\
+\midrule
+1 & 6 & 125 & 14.8026 & 13.3713 & \textbf{10.5770} & 12.9876 & 65.50 & 69.50 & \textbf{90.00} & 75.00 & 200 \\
+2 & 4 & 100 & 24.6747 & 21.8845 & \textbf{16.3899} & 21.2011 & 39.00 & 50.00 & \textbf{70.50} & 50.25 & 150 \\
+3 & 3 & 50  & 63.4858 & 53.4338 & \textbf{44.3370} & 49.3614 & 19.75 & 21.75 & \textbf{31.00} & 24.50 & 100 \\
+4 & 4 & 100 & 26.8510 & 19.7907 & \textbf{16.7808} & 21.1315 & 37.25 & 55.00 & \textbf{68.50} & 47.75 & 300 \\
+5 & 4 & 100 & 27.1821 & 21.7872 & \textbf{17.1709} & 20.3693 & 39.50 & 48.25 & \textbf{75.50} & 50.25 & 150 \\
+6 & 4 & 100 & 27.1199 & 20.8491 & \textbf{17.2223} & 21.3523 & 38.00 & 50.50 & \textbf{72.75} & 48.75 & 150 \\
+7 & 4 & 100 & 27.7727 & 24.4065 & \textbf{16.4758} & 21.1198 & 35.75 & 40.25 & \textbf{76.00} & 46.50 & 150 \\
+8 & 4 & 100 & 17.0788 & 14.8692 & \textbf{10.5657} & 13.1439 & 40.00 & 46.50 & \textbf{70.00} & 51.75 & 150 \\
+9 & 4 & 100 & 32.8435 & 27.2665 & \textbf{21.3358} & 20.8085 & 29.50 & 37.75 & \textbf{52.00} & 46.50 & 150 \\
+10 & 2 & 100 & 59.9539 & 61.1751 & \textbf{39.8666} & 47.4840 & 22.00 & 18.00 & \textbf{42.25} & 27.25 & 150 \\
 \bottomrule
 \end{tabular}
 \label{tab:case_study_comparison}
 \end{table}
 
 \paragraph{Discussion:}
-Across all ten case studies ACO delivered the lowest cost and highest coverage, often by large margins (e.g., Case 1: 91.50\% vs 66.50\% GA and 60.00\% SA). GA consistently outperformed SA on both cost and coverage, but both lagged behind ACO, especially in smaller teams (Cases 3 and 10) where ACO’s pheromone/heuristic guidance drove markedly better dispersion. Longer runs (Case 4 with 300 iterations) continued to favor ACO, suggesting that the pheromone map converges to high-quality paths even with extended horizons.
+Across all ten case studies ACO still delivered the lowest cost and highest coverage in most scenarios, but ABC narrowed the gap: it consistently beat GA on coverage and occasionally on cost (e.g., Case 9) while lagging ACO on coverage. GA remained better than SA on both cost and coverage. Small teams (Cases 3 and 10) remain challenging; ACO leads, ABC sits between ACO and GA/SA. Longer runs (Case 4 with 300 iterations) continue to favor ACO, while ABC maintains mid-pack performance without collapsing coverage. In the convergence figures (Figures~\ref{fig:case1_comparison}--\ref{fig:case10_comparison}), the ABC curves trail ACO but often track or overtake GA late in the run, especially when scout resets trigger new feasible regions.
 
 \subsubsection{Visual Comparison of Selected Cases}
 

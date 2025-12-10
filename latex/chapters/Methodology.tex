@@ -531,3 +531,57 @@ The \textbf{Ant Colony Optimization (ACO)} module constructs paths for all robot
     \item \textbf{Feasibility:} \texttt{\_get\_feasible\_moves()} restricts motion to in-bounds 4-connected moves; collision/energy/obstacle feasibility is enforced in the shared cost function.
     \item \textbf{Interfaces:} Inherits visualization/cost utilities from \texttt{BaseOptimizer}; maintains ant moves as an $(m \times R \times K)$ array and converts to positions with \texttt{movements\_to\_positions()} for scoring.
 \end{itemize}
+
+\section{Artificial Bee Colony Implementation}
+
+The \textbf{Artificial Bee Colony (ABC)} module optimizes the same movement-matrix representation using employed, onlooker, and scout phases. Each food source is a full set of robot trajectories (robots $\times$ horizon); feasibility is enforced via the shared constraints (bounds, 4-connected motion, energy budget, obstacle avoidance, no same-cell collisions). Fitness is $1/(\text{cost}+\varepsilon)$ where cost uses the common objective ($\alpha/\text{coverage} + \beta/\text{connectivity} + \gamma \cdot P_{\text{disconnect}}$). Infeasible neighbors are rejected so the colony always evolves within the feasible region.
+
+\subsection{Algorithm Flow}
+\begin{itemize}
+    \item \textbf{Initialization:} Build a feasible initial colony (default 24 sources) using the random feasible path generator; track a trial counter per source and the global best.
+    \item \textbf{Employed phase:} One employed bee per source. Pick a random peer and perturb a short window of one robot’s path by mixing peer moves with random moves; occasionally swap two moves in another robot path for diversity. Greedy acceptance on improved cost; otherwise increment that source’s trial counter.
+    \item \textbf{Onlooker phase:} Allocate onlookers proportionally to fitness (roulette). Each onlooker picks a source, applies the same neighbor operator with a random peer, and greedily accepts if better; otherwise increments that source’s trial counter.
+    \item \textbf{Scout phase:} Any source whose trial counter exceeds a limit (default 12) is abandoned and replaced with a fresh feasible random path; its trial counter resets to zero. This injects exploration when a source stagnates.
+    \item \textbf{Termination:} Run for a fixed number of cycles (default 200) or until a user-defined convergence/stall condition; report the best source and cost.
+\end{itemize}
+
+\subsection{Key Operators and Parameters}
+\begin{itemize}
+    \item \textbf{Neighbor perturbation:} Window length 10 steps by default; blend peer moves with random moves (60\% peer bias inside the window) and allow a 30\% chance of an intra-path swap on another robot to adjust connectivity. Up to 5 feasible-attempt retries; fall back to the original source if none are feasible.
+    \item \textbf{Selection and replacement:} Greedy acceptance in employed/onlooker phases; scouts reinitialize stagnant sources after hitting the trial limit.
+    \item \textbf{Hyperparameters:} Colony size 24, cycles 200, limit 12, onlooker ratio 0.5 (half bees act as onlookers per cycle), neighbor window 10, neighbor attempts 5. Case studies inherit these defaults unless overridden in \texttt{case\_study\_config.py}.
+    \item \textbf{Integration:} Uses the shared cost function and feasibility checks; visualization hooks mirror GA/SA for live or replay modes.
+\end{itemize}
+
+\subsection{Pseudocode}
+
+\begin{algorithm}[H]
+\caption{Artificial Bee Colony for Multi-Robot Path Planning}
+\begin{algorithmic}[1]
+\State \textbf{Input:} Colony size $m$, cycles $N_{max}$, trial limit $L$, onlooker ratio $\rho$, neighbor window $w$, attempts $a$
+\State Initialize $m$ feasible sources (movement matrices) and trial counters $trials_i \gets 0$
+\State Evaluate all sources, set $best\_cost \gets \infty$
+\For{$cycle = 1$ to $N_{max}$}
+    \State \textbf{// Employed phase}
+    \For{each source $i$}
+        \State pick peer $k \neq i$ uniformly
+        \State neighbor $\gets$ perturb\_window($source_i$, $source_k$, $w$, $a$)
+        \If{feasible(neighbor) and cost(neighbor) $<$ cost($source_i$)} \State $source_i \gets neighbor$; $trials_i \gets 0$ \Else \State $trials_i{+}{+}$ \EndIf
+    \EndFor
+    \State \textbf{// Onlooker phase}
+    \State compute fitness $fit_i = 1/(cost_i+\varepsilon)$, probabilities $p_i = fit_i/\sum fit$
+    \For{$j = 1$ to $\lfloor \rho m \rfloor$} 
+        \State sample source index $i \sim p$, peer $k \neq i$
+        \State neighbor $\gets$ perturb\_window($source_i$, $source_k$, $w$, $a$)
+        \If{feasible(neighbor) and cost(neighbor) $<$ cost($source_i$)} \State $source_i \gets neighbor$; $trials_i \gets 0$ \Else \State $trials_i{+}{+}$ \EndIf
+    \EndFor
+    \State \textbf{// Scout phase}
+    \For{each source $i$} 
+        \If{$trials_i \ge L$} \State $source_i \gets$ new\_feasible\_random(); $trials_i \gets 0$ \EndIf
+    \EndFor
+    \State update $best\_cost$, $best\_source$ if any source improved the global best
+    \State record metrics / visualization
+\EndFor
+\State \textbf{Return} best source and cost
+\end{algorithmic}
+\end{algorithm}

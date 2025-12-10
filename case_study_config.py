@@ -20,6 +20,13 @@ ROBOT_INITIAL_POSITIONS = [
 # Movement deltas
 MOVES = [(-1, 0), (1, 0), (0, -1), (0, 1), (0, 0)]
 
+# ABC defaults (align with config.py)
+ABC_COLONY_SIZE = 24
+ABC_LIMIT = 12
+ABC_ONLOOKER_RATIO = 0.5
+ABC_NEIGHBOR_WINDOW = 10
+ABC_NEIGHBOR_ATTEMPTS = 5
+
 # ============================================================================
 # CASE STUDY DEFINITIONS
 # ============================================================================
@@ -50,7 +57,14 @@ CASE_STUDY_1 = {
     'aco_alpha': 0.5,
     'aco_beta': 0.0,
     'aco_evaporation': 0.4,
-    'aco_strategy': 'as'
+    'aco_strategy': 'as',
+    # ABC parameters
+    'abc_colony_size': ABC_COLONY_SIZE,
+    'abc_cycles': 200,
+    'abc_limit': ABC_LIMIT,
+    'abc_onlooker_ratio': ABC_ONLOOKER_RATIO,
+    'abc_neighbor_window': ABC_NEIGHBOR_WINDOW,
+    'abc_neighbor_attempts': ABC_NEIGHBOR_ATTEMPTS,
 }
 
 # Case Study 2:  (4 robots, 100 steps)
@@ -79,7 +93,14 @@ CASE_STUDY_2 = {
     'aco_alpha': 0.5,
     'aco_beta': 0.0,
     'aco_evaporation': 0.4,
-    'aco_strategy': 'as'
+    'aco_strategy': 'as',
+    # ABC parameters
+    'abc_colony_size': ABC_COLONY_SIZE,
+    'abc_cycles': 150,
+    'abc_limit': ABC_LIMIT,
+    'abc_onlooker_ratio': ABC_ONLOOKER_RATIO,
+    'abc_neighbor_window': ABC_NEIGHBOR_WINDOW,
+    'abc_neighbor_attempts': ABC_NEIGHBOR_ATTEMPTS,
 }
 
 # Case Study 3: (3 robots, 50 steps)
@@ -108,7 +129,14 @@ CASE_STUDY_3 = {
     'aco_alpha': 0.5,
     'aco_beta': 0.0,
     'aco_evaporation': 0.4,
-    'aco_strategy': 'as'
+    'aco_strategy': 'as',
+    # ABC parameters
+    'abc_colony_size': ABC_COLONY_SIZE,
+    'abc_cycles': 100,
+    'abc_limit': ABC_LIMIT,
+    'abc_onlooker_ratio': ABC_ONLOOKER_RATIO,
+    'abc_neighbor_window': ABC_NEIGHBOR_WINDOW,
+    'abc_neighbor_attempts': ABC_NEIGHBOR_ATTEMPTS,
 }
 
 # Case Study 4: Higher max_iterations (300)
@@ -137,7 +165,14 @@ CASE_STUDY_4 = {
     'aco_alpha': 0.5,
     'aco_beta': 0.0,
     'aco_evaporation': 0.4,
-    'aco_strategy': 'as'
+    'aco_strategy': 'as',
+    # ABC parameters
+    'abc_colony_size': ABC_COLONY_SIZE,
+    'abc_cycles': 300,
+    'abc_limit': ABC_LIMIT,
+    'abc_onlooker_ratio': ABC_ONLOOKER_RATIO,
+    'abc_neighbor_window': ABC_NEIGHBOR_WINDOW,
+    'abc_neighbor_attempts': ABC_NEIGHBOR_ATTEMPTS,
 }
 
 # Case Study 5: Higher SA initial temperature
@@ -166,7 +201,14 @@ CASE_STUDY_5 = {
     'aco_alpha': 0.5,
     'aco_beta': 0.0,
     'aco_evaporation': 0.4,
-    'aco_strategy': 'as'
+    'aco_strategy': 'as',
+    # ABC parameters
+    'abc_colony_size': ABC_COLONY_SIZE,
+    'abc_cycles': 150,
+    'abc_limit': ABC_LIMIT,
+    'abc_onlooker_ratio': ABC_ONLOOKER_RATIO,
+    'abc_neighbor_window': ABC_NEIGHBOR_WINDOW,
+    'abc_neighbor_attempts': ABC_NEIGHBOR_ATTEMPTS,
 }
 
 # Case Study 6: Larger GA population
@@ -195,7 +237,14 @@ CASE_STUDY_6 = {
     'aco_alpha': 0.5,
     'aco_beta': 0.0,
     'aco_evaporation': 0.4,
-    'aco_strategy': 'as'
+    'aco_strategy': 'as',
+    # ABC parameters
+    'abc_colony_size': ABC_COLONY_SIZE,
+    'abc_cycles': 150,
+    'abc_limit': ABC_LIMIT,
+    'abc_onlooker_ratio': ABC_ONLOOKER_RATIO,
+    'abc_neighbor_window': ABC_NEIGHBOR_WINDOW,
+    'abc_neighbor_attempts': ABC_NEIGHBOR_ATTEMPTS,
 }
 
 # Case Study 7: ACO with non-zero beta and AS strategy
@@ -224,7 +273,14 @@ CASE_STUDY_7 = {
     'aco_alpha': 0.5,
     'aco_beta': 1.0,
     'aco_evaporation': 0.4,
-    'aco_strategy': 'as'
+    'aco_strategy': 'as',
+    # ABC parameters
+    'abc_colony_size': ABC_COLONY_SIZE,
+    'abc_cycles': 150,
+    'abc_limit': ABC_LIMIT,
+    'abc_onlooker_ratio': ABC_ONLOOKER_RATIO,
+    'abc_neighbor_window': ABC_NEIGHBOR_WINDOW,
+    'abc_neighbor_attempts': ABC_NEIGHBOR_ATTEMPTS,
 }
 
 # Case Study 8: Different global alpha and beta
@@ -253,7 +309,14 @@ CASE_STUDY_8 = {
     'aco_alpha': 0.5,
     'aco_beta': 0.0,
     'aco_evaporation': 0.4,
-    'aco_strategy': 'as'
+    'aco_strategy': 'as',
+    # ABC parameters
+    'abc_colony_size': ABC_COLONY_SIZE,
+    'abc_cycles': 150,
+    'abc_limit': ABC_LIMIT,
+    'abc_onlooker_ratio': ABC_ONLOOKER_RATIO,
+    'abc_neighbor_window': ABC_NEIGHBOR_WINDOW,
+    'abc_neighbor_attempts': ABC_NEIGHBOR_ATTEMPTS,
 }
 
 # Case Study 9: Smaller communication radius
@@ -282,7 +345,14 @@ CASE_STUDY_9 = {
     'aco_alpha': 0.5,
     'aco_beta': 0.0,
     'aco_evaporation': 0.4,
-    'aco_strategy': 'as'
+    'aco_strategy': 'as',
+    # ABC parameters
+    'abc_colony_size': ABC_COLONY_SIZE,
+    'abc_cycles': 150,
+    'abc_limit': ABC_LIMIT,
+    'abc_onlooker_ratio': ABC_ONLOOKER_RATIO,
+    'abc_neighbor_window': ABC_NEIGHBOR_WINDOW,
+    'abc_neighbor_attempts': ABC_NEIGHBOR_ATTEMPTS,
 }
 
 # Case Study 10: Fewer robots (2)
@@ -311,7 +381,14 @@ CASE_STUDY_10 = {
     'aco_alpha': 0.5,
     'aco_beta': 0.0,
     'aco_evaporation': 0.4,
-    'aco_strategy': 'as'
+    'aco_strategy': 'as',
+    # ABC parameters
+    'abc_colony_size': ABC_COLONY_SIZE,
+    'abc_cycles': 150,
+    'abc_limit': ABC_LIMIT,
+    'abc_onlooker_ratio': ABC_ONLOOKER_RATIO,
+    'abc_neighbor_window': ABC_NEIGHBOR_WINDOW,
+    'abc_neighbor_attempts': ABC_NEIGHBOR_ATTEMPTS,
 }
 
 # Case Study 11: Longer path length (150)
@@ -340,5 +417,12 @@ CASE_STUDY_11 = {
     'aco_alpha': 0.5,
     'aco_beta': 0.0,
     'aco_evaporation': 0.4,
-    'aco_strategy': 'as'
+    'aco_strategy': 'as',
+    # ABC parameters
+    'abc_colony_size': ABC_COLONY_SIZE,
+    'abc_cycles': 200,
+    'abc_limit': ABC_LIMIT,
+    'abc_onlooker_ratio': ABC_ONLOOKER_RATIO,
+    'abc_neighbor_window': ABC_NEIGHBOR_WINDOW,
+    'abc_neighbor_attempts': ABC_NEIGHBOR_ATTEMPTS,
 }

@@ -1,17 +1,21 @@
 """
 Case Study Comparison for Multi-Robot Path Planning Optimization Algorithms.
 
-Simple comparison of SA, GA, and ACO algorithms with fixed common parameters.
+Simple comparison of SA, GA, ACO, and ABC algorithms with fixed common parameters.
 """
 
 import numpy as np
 import matplotlib.pyplot as plt
 import case_study_config as cs_config
 import os
+import config
 from optimization.base_optimizer import BaseOptimizer
 from ant_colony import AntColonyOptimizer
 from genetic import GeneticOptimizer
 from simulated_annealing import SimulatedAnnealing
+from abc_optimizer import ABCOptimizer
+from experiments.utils import apply_scenario
+from abc_optimizer import ABCOptimizer
 
 
 # Global variables needed by base optimizer - will be set by case study
@@ -27,6 +31,14 @@ MAP_HEIGHT = cs_config.MAP_HEIGHT
 MAP_WIDTH = cs_config.MAP_WIDTH
 MOVES = cs_config.MOVES
 ROBOT_INITIAL_POSITIONS = cs_config.ROBOT_INITIAL_POSITIONS
+ABC_DEFAULTS = {
+    "colony_size": 24,
+    "cycles": 200,
+    "limit": 12,
+    "onlooker_ratio": 0.5,
+    "neighbor_window": 10,
+    "neighbor_attempts": 5,
+}
 
 # Map initialization
 MAP = np.zeros((MAP_HEIGHT, MAP_WIDTH))
@@ -157,14 +169,63 @@ def run_aco(robot_positions, path_length, num_ants, max_iterations, aco_alpha, a
     return final_cost, cost_history, best_path
 
 
-def plot_comparison(sa_history, ga_history, aco_history, num_robots, path_length, case_study_name):
-    """Plot comparison of all three algorithms."""
+def run_abc(
+    robot_positions,
+    path_length,
+    colony_size,
+    cycles,
+    limit,
+    onlooker_ratio,
+    neighbor_window,
+    neighbor_attempts,
+):
+    """Run Artificial Bee Colony."""
+    print(f"\n{'='*70}")
+    print("ARTIFICIAL BEE COLONY")
+    print(f"{'='*70}")
+
+    optimizer = ABCOptimizer(
+        colony_size=colony_size,
+        max_cycles=cycles,
+        limit=limit,
+        onlooker_ratio=onlooker_ratio,
+        neighbor_window=neighbor_window,
+        neighbor_attempts=neighbor_attempts,
+        visualizer=None,
+    )
+
+    initial_path = BaseOptimizer.create_dummy_solution(
+        initial_positions=robot_positions,
+        path_length=path_length,
+    )
+    initial_movements = BaseOptimizer.positions_to_movements(initial_path, robot_positions)
+
+    cost_history = []
+    original_update = optimizer.update_visualization
+
+    def tracking_update(iteration=0, best_cost=float("inf"), current_cost=float("inf"), **kwargs):
+        cost_history.append(best_cost if np.isfinite(best_cost) else current_cost)
+        original_update(iteration=iteration, best_cost=best_cost, current_cost=current_cost, **kwargs)
+
+    optimizer.update_visualization = tracking_update
+
+    best_movements, final_cost = optimizer.run(initial_movements)
+    best_path = BaseOptimizer.movements_to_positions(best_movements, robot_positions)
+
+    print(f"Final Cost: {final_cost:.6f}")
+
+    return final_cost, cost_history, best_path
+
+
+def plot_comparison(sa_history, ga_history, aco_history, abc_history, num_robots, path_length, case_study_name):
+    """Plot comparison of all algorithms."""
     plt.figure(figsize=(14, 7))
     
     # Plot each algorithm with its own x-axis (iteration count)
     plt.plot(range(len(sa_history)), sa_history, label='Simulated Annealing', linewidth=2, marker='o', markersize=3, markevery=max(1, len(sa_history)//20))
     plt.plot(range(len(ga_history)), ga_history, label='Genetic Algorithm', linewidth=2, marker='s', markersize=3, markevery=max(1, len(ga_history)//20))
     plt.plot(range(len(aco_history)), aco_history, label='Ant Colony Optimization', linewidth=2, marker='^', markersize=3, markevery=max(1, len(aco_history)//20))
+    plt.plot(range(len(abc_history)), abc_history, label='Artificial Bee Colony', linewidth=2, marker='D', markersize=3, markevery=max(1, len(abc_history)//20))
     
     plt.xlabel('Iteration', fontsize=12)
     plt.ylabel('Best Cost (lower is better)', fontsize=12)
@@ -178,6 +239,7 @@ def plot_comparison(sa_history, ga_history, aco_history, num_robots, path_length
     print(f"  SA:  {len(sa_history)} iterations")
     print(f"  GA:  {len(ga_history)} iterations")
     print(f"  ACO: {len(aco_history)} iterations")
+    print(f"  ABC: {len(abc_history)} iterations")
     
     # Ensure the directory exists
     os.makedirs("latex/Figures", exist_ok=True)
@@ -207,9 +269,21 @@ def calculate_coverage(path_array, num_robots, path_length):
 def compare_all(case_study):
     """Compare all three algorithms using case study configuration."""
     
-    # Setup - Update global variables from case study
-    global R, PATH_LENGTH, ALPHA, BETA, GAMMA, ENERGY_BUDGET, COMMUNICATION_RADIUS, CONNECTIVITY_THRESHOLD
-    
+    # Sync config/BaseOptimizer globals to the case study scenario
+    global R, PATH_LENGTH, ALPHA, BETA, GAMMA, ENERGY_BUDGET, COMMUNICATION_RADIUS, CONNECTIVITY_THRESHOLD, MAP
+
+    robot_positions = apply_scenario(
+        num_robots=case_study['num_robots'],
+        path_length=case_study['path_length'],
+        alpha=case_study['alpha'],
+        beta=case_study['beta'],
+        gamma=case_study['gamma'],
+        energy_budget=case_study['energy_budget'],
+        communication_radius=case_study['communication_radius'],
+        connectivity_threshold=case_study['connectivity_threshold'],
+        robot_positions=cs_config.ROBOT_INITIAL_POSITIONS[: case_study['num_robots']],
+    )
+
     R = case_study['num_robots']
     PATH_LENGTH = case_study['path_length']
     ALPHA = case_study['alpha']
@@ -218,8 +292,7 @@ def compare_all(case_study):
     ENERGY_BUDGET = case_study['energy_budget']
     COMMUNICATION_RADIUS = case_study['communication_radius']
     CONNECTIVITY_THRESHOLD = case_study['connectivity_threshold']
-    
-    robot_positions = cs_config.ROBOT_INITIAL_POSITIONS[:R]
+    MAP = np.array(config.MAP)
     
     print(f"\n{'#'*70}")
     print(f"CASE STUDY: {case_study['name']}")
@@ -227,7 +300,7 @@ def compare_all(case_study):
     print(f"{'#'*70}")
     
     # Run SA
-    print("\n[1/3] Running Simulated Annealing...")
+    print("\n[1/4] Running Simulated Annealing...")
     sa_cost, sa_history, sa_path = run_sa(
         robot_positions, PATH_LENGTH,
         case_study['sa_initial_temp'], 
@@ -239,7 +312,7 @@ def compare_all(case_study):
     print(f"SA completed: {len(sa_history)} iterations, Coverage: {sa_coverage:.2f}%")
     
     # Run GA
-    print("\n[2/3] Running Genetic Algorithm...")
+    print("\n[2/4] Running Genetic Algorithm...")
     ga_cost, ga_history, ga_path = run_ga(
         robot_positions, PATH_LENGTH,
         case_study['ga_population'], 
@@ -251,7 +324,7 @@ def compare_all(case_study):
     print(f"GA completed: {len(ga_history)} iterations, Coverage: {ga_coverage:.2f}%")
     
     # Run ACO
-    print("\n[3/3] Running Ant Colony Optimization...")
+    print("\n[3/4] Running Ant Colony Optimization...")
     aco_cost, aco_history, aco_path = run_aco(
         robot_positions, PATH_LENGTH,
         case_study['aco_num_ants'], 
@@ -263,6 +336,29 @@ def compare_all(case_study):
     )
     aco_coverage = calculate_coverage(aco_path, R, PATH_LENGTH)
     print(f"ACO completed: {len(aco_history)} iterations, Coverage: {aco_coverage:.2f}%")
+
+    # Run ABC
+    print("\n[4/4] Running Artificial Bee Colony...")
+    abc_params = ABC_DEFAULTS | {
+        "colony_size": case_study.get("abc_colony_size", ABC_DEFAULTS["colony_size"]),
+        "cycles": case_study.get("abc_cycles", case_study["max_iterations"]),
+        "limit": case_study.get("abc_limit", ABC_DEFAULTS["limit"]),
+        "onlooker_ratio": case_study.get("abc_onlooker_ratio", ABC_DEFAULTS["onlooker_ratio"]),
+        "neighbor_window": case_study.get("abc_neighbor_window", ABC_DEFAULTS["neighbor_window"]),
+        "neighbor_attempts": case_study.get("abc_neighbor_attempts", ABC_DEFAULTS["neighbor_attempts"]),
+    }
+    abc_cost, abc_history, abc_path = run_abc(
+        robot_positions,
+        PATH_LENGTH,
+        abc_params["colony_size"],
+        abc_params["cycles"],
+        abc_params["limit"],
+        abc_params["onlooker_ratio"],
+        abc_params["neighbor_window"],
+        abc_params["neighbor_attempts"],
+    )
+    abc_coverage = calculate_coverage(abc_path, R, PATH_LENGTH)
+    print(f"ABC completed: {len(abc_history)} iterations, Coverage: {abc_coverage:.2f}%")
     
     # Print comparison
     print(f"\n{'='*70}")
@@ -273,11 +369,12 @@ def compare_all(case_study):
     print(f"{'SA':<15} {sa_cost:<15.6f} {sa_coverage:<15.2f} {len(sa_history):<15}")
     print(f"{'GA':<15} {ga_cost:<15.6f} {ga_coverage:<15.2f} {len(ga_history):<15}")
     print(f"{'ACO':<15} {aco_cost:<15.6f} {aco_coverage:<15.2f} {len(aco_history):<15}")
+    print(f"{'ABC':<15} {abc_cost:<15.6f} {abc_coverage:<15.2f} {len(abc_history):<15}")
     print(f"{'='*70}\n")
     
     # Plot comparison
     print("\nGenerating comparison plot...")
-    plot_comparison(sa_history, ga_history, aco_history, R, PATH_LENGTH, case_study['name'])
+    plot_comparison(sa_history, ga_history, aco_history, abc_history, R, PATH_LENGTH, case_study['name'])
 
 
 def run_single_sa(num_robots, path_length, initial_temp, cooling_rate, min_temp, max_iterations):
