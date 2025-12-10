@@ -9,6 +9,7 @@ from optimization.base_visualizer import BaseVisualizer
 from ant_colony import AntColonyOptimizer
 from genetic import GeneticOptimizer
 from simulated_annealing import SimulatedAnnealing
+from abc_optimizer import ABCOptimizer
 from aco_visualization import AntColonyVisualizer
 from genetic_visualization import GeneticVisualizer
 from sa_visualization import OptimizationVisualizer
@@ -18,6 +19,7 @@ VISUALIZER_CLASSES = {
     "sa": OptimizationVisualizer,
     "ga": GeneticVisualizer,
     "aco": AntColonyVisualizer,
+    "abc": GeneticVisualizer,
 }
 
 PathArray = np.ndarray
@@ -77,6 +79,16 @@ def build_optimizer(
             evaporation_rate=config.ACO_EVAPORATION_RATE,
             visualizer=visualizer,
         )
+    if optimizer_key == "abc":
+        return ABCOptimizer(
+            colony_size=config.ABC_COLONY_SIZE,
+            max_cycles=config.ABC_MAX_CYCLES,
+            limit=config.ABC_LIMIT,
+            onlooker_ratio=config.ABC_ONLOOKER_RATIO,
+            neighbor_window=config.ABC_NEIGHBOR_WINDOW,
+            neighbor_attempts=config.ABC_NEIGHBOR_ATTEMPTS,
+            visualizer=visualizer,
+        )
     raise ValueError(f"Unsupported optimizer '{optimizer_key}'")
 
 
@@ -107,6 +119,12 @@ def run_optimizer(
     if optimizer_key == "aco":
         best_path = optimizer.run(initial_movements)
         best_cost = BaseOptimizer.cost_function(best_path)
+        return best_path, best_cost
+    if optimizer_key == "abc":
+        best_movements, best_cost = optimizer.run(initial_movements)
+        best_path = BaseOptimizer.movements_to_positions(
+            best_movements, config.ROBOT_INITIAL_POSITIONS
+        )
         return best_path, best_cost
 
     raise ValueError(f"Unsupported optimizer '{optimizer_key}'")

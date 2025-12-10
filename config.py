@@ -135,10 +135,22 @@ ACO_STRATEGY = "as"  # Options: "saco" (Simple ACO), "as" (Ant System)
 
 
 # ============================================================================
+# ARTIFICIAL BEE COLONY PARAMETERS
+# ============================================================================
+
+ABC_COLONY_SIZE = 24
+ABC_MAX_CYCLES = 200
+ABC_LIMIT = 12  # abandonment limit before becoming a scout
+ABC_ONLOOKER_RATIO = 0.5  # fraction of bees acting as onlookers
+ABC_NEIGHBOR_WINDOW = 10  # timesteps to perturb per neighbor attempt
+ABC_NEIGHBOR_ATTEMPTS = 5  # retries to find a feasible neighbor
+
+
+# ============================================================================
 # APPLICATION RUNTIME PARAMETERS
 # ============================================================================
 
-OPTIMIZER_TYPE = "aco"  # Options: "sa", "ga", "aco"
+OPTIMIZER_TYPE = "abc"  # Options: "sa", "ga", "aco", "abc"
 
 
 # ============================================================================
