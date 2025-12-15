@@ -22,6 +22,20 @@ python main.py
 
 The GUI will show real-time optimization progress with animated robot paths.
 
+## Learned Router (SA/GA/ACO)
+
+This repo includes an MoE-style router that selects between **SA**, **GA**, and **ACO** based on scenario inputs.
+
+```bash
+# 1) Collect training data (writes runs/router/dataset.csv)
+python ml_data_collection.py --samples 500 --budget 150 --quiet
+
+# 2) Train router model (writes runs/router/model.joblib)
+python router_train.py --data runs/router/dataset.csv
+```
+
+Enable routing by setting `USE_ROUTER = True` in `config.py` (and optionally adjusting `ROUTER_MODEL_PATH`).
+
 ## Configuration
 
 All parameters are centralized in `config.py` for easy customization:
@@ -55,6 +69,39 @@ All parameters are centralized in `config.py` for easy customization:
 - `FAST_MODE_UPDATE_INTERVAL`: Update GUI every N iterations during replay (default: 10)
   - Higher values = faster replay, lower values = smoother animation
 - `VISUALIZATION_STEP_SIZE`: Animation frame skipping (default: 10)
+
+## Router (SA/GA/ACO)
+
+This repo includes an MoE-style router that can learn when to run SA vs GA vs ACO based on instance features.
+
+**1) Collect training data**
+
+Labels matter: if you label purely by lowest final cost, the dataset may be dominated by the strongest (but slowest) algorithm.
+
+```bash
+cd "/home/amr/Optimization Project"
+
+# Pareto-style (recommended): pick the fastest algorithm within 10% of best cost
+"/home/amr/Optimization Project/.venv/bin/python" ml_data_collection.py \
+  --samples 2000 --budget 50 --workers 12 --quiet \
+  --label-policy pareto --pareto-tol 0.10
+
+# Utility-style: pick argmin(cost + time_weight * seconds)
+"/home/amr/Optimization Project/.venv/bin/python" ml_data_collection.py \
+  --samples 2000 --budget 50 --workers 12 --quiet \
+  --label-policy utility --time-weight 5.0
+```
+
+**2) Train the router**
+
+```bash
+"/home/amr/Optimization Project/.venv/bin/python" router_train.py --data runs/router/dataset.csv
+```
+
+**3) Enable routing in `config.py`**
+
+- Set `USE_ROUTER = True`
+- Ensure `ROUTER_MODEL_PATH = "runs/router/model.joblib"`
 
 ## Project Structure
 

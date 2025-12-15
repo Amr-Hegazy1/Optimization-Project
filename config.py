@@ -152,6 +152,17 @@ ABC_NEIGHBOR_ATTEMPTS = 5  # retries to find a feasible neighbor
 
 OPTIMIZER_TYPE = "abc"  # Options: "sa", "ga", "aco", "abc"
 
+# ============================================================================
+# ROUTER (MOE-STYLE) PARAMETERS
+# ============================================================================
+
+# When enabled, a learned router chooses between SA/GA/ACO at runtime.
+# If the router model is missing or fails to load, the system falls back to
+# `OPTIMIZER_TYPE`.
+USE_ROUTER = True
+ROUTER_MODEL_PATH = "runs/router/model.joblib"
+ROUTER_ALLOWED_OPTIMIZERS = ("sa", "ga", "aco")
+
 
 # ============================================================================
 # VISUALIZATION PARAMETERS

@@ -25,6 +25,28 @@ VISUALIZER_CLASSES = {
 PathArray = np.ndarray
 
 
+def select_optimizer_key() -> str:
+    """Return optimizer key, optionally using the learned router."""
+    optimizer_key = config.OPTIMIZER_TYPE.lower()
+    if not getattr(config, "USE_ROUTER", False):
+        return optimizer_key
+
+    try:
+        from optimization.router.model import RouterModel  # local import to avoid extra deps on startup
+
+        router = RouterModel.load(config.ROUTER_MODEL_PATH)
+        predicted = router.predict_optimizer_key_from_config()
+        allowed = set(getattr(config, "ROUTER_ALLOWED_OPTIMIZERS", ("sa", "ga", "aco")))
+        if predicted in allowed:
+            print(f"\n[Router] Selected optimizer: {predicted}")
+            return predicted
+        print(f"\n[Router] Predicted '{predicted}' not allowed; falling back to {optimizer_key}")
+        return optimizer_key
+    except Exception as exc:
+        print(f"\n[Router] Disabled (load/predict failed): {exc}")
+        return optimizer_key
+
+
 def build_visualizer(
     optimizer_key: str, map_grid: np.ndarray
 ) -> Optional[BaseVisualizer]:
@@ -153,7 +175,7 @@ def configure_fast_mode(optimizer: BaseOptimizer) -> None:
 
 
 def main() -> None:
-    optimizer_key = config.OPTIMIZER_TYPE.lower()
+    optimizer_key = select_optimizer_key()
 
     print("\n" + "=" * 70)
     print("  MULTI-ROBOT PATH PLANNING")
