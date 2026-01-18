@@ -13,6 +13,7 @@ from typing import Iterable, List, Optional, Sequence, Set, Tuple
 
 import numpy as np
 
+import config
 from config import *
 
 Position = Tuple[int, int]
@@ -239,7 +240,7 @@ class BaseOptimizer(ABC):
                     valid_moves = []
                     for move in MOVES:
                         nx, ny = x + move[0], y + move[1]
-                        if 0 <= nx < MAP_HEIGHT and 0 <= ny < MAP_WIDTH:
+                        if 0 <= nx < MAP_HEIGHT and 0 <= ny < MAP_WIDTH and MAP[nx, ny] != 2:
                             valid_moves.append(move)
                     move_dx, move_dy = random.choice(valid_moves)
                     x += move_dx
@@ -395,7 +396,7 @@ class BaseOptimizer(ABC):
         for r in range(path_array.shape[0]):
             for t in range(path_array.shape[1]):
                 x, y = path_array[r][t]
-                if MAP[x, y] == 0:
+                if INITIAL_MAP[x, y] == 0:
                     visited_unexplored.add((x, y))
         coverage_count = len(visited_unexplored)
         connectivity_sum = 0.0
@@ -462,3 +463,107 @@ class BaseOptimizer(ABC):
         print(f"Cells explored: {len(visited_unexplored)}/{total_cells} ({explored_pct:.1f}%)")
         print("R* = Final robot position, * = Explored, # = Obstacle, . = Unexplored")
         print("=" * 50 + "\n")
+
+    @staticmethod
+    def simulate_movements(movements_array, initial_positions=None):
+        """
+        Simulate robot movements step by step, updating maps along the way.
+
+        Args:
+            movements_array: Array of movement sequences for each robot
+            initial_positions: Starting positions for robots (defaults to ROBOT_INITIAL_POSITIONS)
+
+        Returns:
+            tuple: (final_positions, path_array) - Final robot positions and full path history
+        """
+        initial_positions = initial_positions or config.ROBOT_INITIAL_POSITIONS
+        robots_positions = list(initial_positions)
+        path_array = []
+
+        for k in range(config.PATH_LENGTH):
+            old_positions = robots_positions.copy()
+            current_positions = []
+            obstacle_found = False
+
+            for r in range(R):
+                x, y = robots_positions[r]
+                move_idx = movements_array[r][k]
+                dx, dy = MOVES[move_idx]
+                x, y = x + dx, y + dy
+
+                # Ensure within map bounds
+                x = max(0, min(config.MAP_HEIGHT - 1, x))
+                y = max(0, min(config.MAP_WIDTH - 1, y))
+
+                if PHYSICAL_MAP[x][y] == 2:
+                    obstacle_found = True
+                    break
+
+                current_positions.append((x, y))
+
+            if not obstacle_found:
+                # Update both maps with old and new positions
+                BaseOptimizer.update_map(old_positions, current_positions)
+                robots_positions = current_positions
+                path_array.append(current_positions)
+            else:
+                # If obstacle found, stop simulation
+                break
+
+        return robots_positions, np.array(path_array, dtype=object)
+
+    @staticmethod
+    def update_map(old_positions: Sequence[Position], new_positions: Sequence[Position]) -> None:
+        """
+        Update the physical map and virtual map after robots move.
+
+        This function:
+        1. Removes robots from their old positions in PHYSICAL_MAP (sets to free cells)
+        2. Places robots at their new positions in PHYSICAL_MAP
+        3. Updates the virtual MAP to reflect new robot vision ranges
+
+        Args:
+            old_positions: Previous robot positions [(x,y), ...]
+            new_positions: New robot positions [(x,y), ...]
+        """
+        # Remove old robot positions from PHYSICAL_MAP (set to free cells)
+        for old_x, old_y in old_positions:
+            if 0 <= old_x < MAP_HEIGHT and 0 <= old_y < MAP_WIDTH:
+                if PHYSICAL_MAP[old_x][old_y] == CELL_ROBOT:
+                    PHYSICAL_MAP[old_x][old_y] = CELL_FREE
+
+        # Place robots at new positions in PHYSICAL_MAP
+        for new_x, new_y in new_positions:
+            if 0 <= new_x < MAP_HEIGHT and 0 <= new_y < MAP_WIDTH:
+                PHYSICAL_MAP[new_x][new_y] = CELL_ROBOT
+
+        # Update virtual MAP with new vision ranges
+        BaseOptimizer.update_virtual_map(new_positions)
+
+    @staticmethod
+    def update_virtual_map(robot_positions: Sequence[Position]) -> None:
+        """
+        Update the virtual MAP to reflect robot vision from new positions.
+
+        This function updates the MAP (virtual map) based on what robots can see
+        from their current positions using Manhattan distance vision range.
+
+        Args:
+            robot_positions: Current robot positions [(x,y), ...]
+        """
+        # For each robot, update the virtual map with what it can see
+        for robot_y, robot_x in robot_positions:
+            # Check all cells within vision range using Manhattan distance
+            for dy in range(-ROBOT_VISION, ROBOT_VISION + 1):
+                for dx in range(-ROBOT_VISION, ROBOT_VISION + 1):
+                    # Check if within Manhattan distance vision range
+                    if abs(dy) + abs(dx) <= ROBOT_VISION:
+                        cell_y = robot_y + dy
+                        cell_x = robot_x + dx
+
+                        # Check if cell is within map bounds
+                        if 0 <= cell_y < MAP_HEIGHT and 0 <= cell_x < MAP_WIDTH:
+                            # Update virtual MAP with what's in PHYSICAL_MAP
+                            # Only update if not already known (or update to latest)
+                            MAP[cell_y, cell_x] = PHYSICAL_MAP[cell_y][cell_x]
+

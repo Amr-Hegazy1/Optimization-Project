@@ -17,29 +17,27 @@ NUMBER_OF_GENERATIONS = 100
 
 # Physical map (Free (1), Obstacle(2), Robot(3))
 PHYSICAL_MAP = [
-    [1, 1, 1, 2, 2, 3, 1, 1, 1, 1, 1, 2, 1, 1, 1, 3, 1, 1, 2, 1],  # Robots 2 and 3
-    [1, 2, 1, 1, 2, 1, 2, 2, 1, 1, 1, 2, 1, 2, 2, 1, 1, 1, 1, 1],
-    [1, 2, 1, 1, 1, 1, 1, 2, 1, 1, 1, 1, 1, 1, 2, 1, 2, 1, 1, 1],
-    [1, 1, 1, 2, 1, 1, 1, 1, 1, 2, 2, 1, 1, 1, 2, 1, 2, 1, 1, 1],
-    [2, 1, 1, 2, 1, 2, 1, 1, 1, 1, 2, 1, 1, 1, 1, 1, 1, 1, 2, 1],
-    [3, 2, 1, 1, 1, 2, 2, 1, 1, 1, 1, 1, 2, 1, 1, 1, 1, 1, 2, 3],  # Robots 1 and 4
-    [1, 1, 1, 1, 1, 1, 2, 1, 2, 1, 1, 1, 2, 2, 1, 1, 1, 1, 1, 1],
-    [1, 1, 2, 1, 1, 1, 1, 1, 2, 1, 1, 1, 1, 2, 1, 2, 1, 1, 1, 1],
-    [1, 1, 2, 2, 1, 1, 1, 1, 1, 1, 2, 1, 1, 1, 1, 2, 2, 1, 1, 1],
-    [1, 1, 1, 2, 1, 2, 1, 1, 1, 1, 2, 1, 1, 1, 1, 1, 2, 1, 2, 1],
-    [1, 2, 1, 1, 1, 2, 2, 1, 1, 1, 1, 1, 1, 2, 1, 1, 1, 1, 2, 1],
-    [1, 2, 1, 1, 1, 1, 2, 1, 2, 2, 1, 1, 1, 2, 1, 1, 1, 1, 1, 1],
-    [1, 1, 1, 2, 1, 1, 1, 1, 1, 2, 1, 1, 1, 1, 1, 2, 1, 1, 1, 1],
-    [2, 1, 1, 2, 2, 1, 1, 1, 1, 1, 1, 2, 1, 1, 1, 2, 2, 1, 1, 1],
-    [2, 2, 1, 1, 2, 1, 1, 2, 1, 1, 1, 2, 1, 1, 1, 1, 2, 1, 2, 1],
-    [1, 1, 1, 1, 1, 1, 1, 2, 2, 1, 1, 1, 1, 1, 1, 1, 1, 1, 2, 3],  # Robot 6
-    [1, 1, 2, 1, 1, 1, 1, 1, 2, 1, 2, 1, 1, 2, 1, 1, 1, 1, 1, 1],
-    [1, 1, 2, 2, 1, 2, 1, 1, 1, 1, 2, 2, 1, 2, 1, 1, 1, 2, 1, 1],
-    [1, 1, 1, 2, 1, 2, 2, 1, 1, 1, 1, 2, 1, 1, 1, 2, 1, 2, 1, 1],
-    [1, 1, 1, 1, 1, 3, 2, 1, 1, 2, 1, 1, 1, 1, 1, 2, 2, 1, 1, 1]   # Robot 5
+    [1, 1, 1, 1, 1, 3, 1, 1, 1, 1, 1, 1, 1, 1, 1, 3, 1, 1, 1, 1],  # Robots 2 and 3
+    [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1],
+    [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 2, 1, 1, 1, 1, 1, 1, 1, 1, 1],
+    [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1],
+    [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1],
+    [3, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 3],  # Robots 1 and 4
+    [1, 1, 1, 1, 1, 1, 1, 1, 2, 1, 1, 1, 1, 1, 2, 1, 1, 1, 1, 1],
+    [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1],
+    [1, 1, 1, 1, 1, 1, 1, 1, 1, 2, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1],
+    [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1],
+    [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 2, 1, 1, 1, 1, 1, 1, 1, 1, 1],
+    [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1],
+    [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1],
+    [1, 1, 1, 1, 2, 1, 1, 1, 1, 1, 1, 2, 1, 1, 1, 1, 2, 1, 1, 1],
+    [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1],
+    [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 3],  # Robot 6
+    [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1],
+    [1, 1, 1, 1, 1, 1, 1, 1, 2, 1, 1, 1, 1, 2, 1, 1, 1, 1, 1, 1],
+    [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1],
+    [1, 1, 1, 1, 1, 3, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1]   # Robot 5
 ]
-
-MAP = np.zeros((MAP_HEIGHT, MAP_WIDTH))
 
 # Robot configuration
 ROBOT_INITIAL_POSITIONS = [
@@ -54,10 +52,39 @@ ROBOT_INITIAL_POSITIONS = [
 R = len(ROBOT_INITIAL_POSITIONS)  # Number of robots
 
 # Path length (Number of steps)
-PATH_LENGTH = 100
+PATH_LENGTH = 10
 
 # Robot Vision (Number of adjacent cells a robot can see)
 ROBOT_VISION = 1
+
+def init_map():
+    """
+    Initialize the map using Manhattan distance for vision range.
+    Only cells within Manhattan distance V are visible.
+
+    Returns:
+        numpy.ndarray: Initialized map
+    """
+    map_grid = np.zeros((MAP_HEIGHT, MAP_WIDTH), dtype=int)
+
+    for robot_y, robot_x in ROBOT_INITIAL_POSITIONS:
+        for dy in range(-ROBOT_VISION, ROBOT_VISION + 1):
+            for dx in range(-ROBOT_VISION, ROBOT_VISION + 1):
+                # Check Manhattan distance
+                if abs(dy) + abs(dx) <= ROBOT_VISION:
+                    cell_y = robot_y + dy
+                    cell_x = robot_x + dx
+
+                    if 0 <= cell_y < MAP_HEIGHT and 0 <= cell_x < MAP_WIDTH:
+                        map_grid[cell_y, cell_x] = PHYSICAL_MAP[cell_y][cell_x]
+
+    return map_grid
+
+MAP = init_map()
+
+# Save initial MAP state for coverage calculation
+# This is needed because MAP gets updated during simulation
+INITIAL_MAP = MAP.copy()
 
 
 # ============================================================================
@@ -141,6 +168,7 @@ ACO_STRATEGY = "as"  # Options: "saco" (Simple ACO), "as" (Ant System)
 # ============================================================================
 
 OPTIMIZER_TYPE = "aco"  # Options: "sa", "ga", "aco"
+NUMBER_OF_OPTIMIZATION_RUNS = 10
 
 
 # ============================================================================

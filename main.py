@@ -1,3 +1,5 @@
+import math
+import random
 import threading
 from typing import Optional, Tuple
 
@@ -73,60 +75,6 @@ GAMMA = config.GAMMA
 MOVES = config.MOVES
 
 PHYSICAL_MAP = config.PHYSICAL_MAP
-
-
-def init_map():
-    """
-    Initialize the map using Manhattan distance for vision range.
-    Only cells within Manhattan distance V are visible.
-
-    Returns:
-        numpy.ndarray: Initialized map
-    """
-    map_grid = np.zeros((N, M), dtype=int)
-
-    for robot_y, robot_x in ROBOTS_POSITIONS:
-        for dy in range(-V, V + 1):
-            for dx in range(-V, V + 1):
-                # Check Manhattan distance
-                if abs(dy) + abs(dx) <= V:
-                    cell_y = robot_y + dy
-                    cell_x = robot_x + dx
-
-                    if 0 <= cell_y < N and 0 <= cell_x < M:
-                        map_grid[cell_y, cell_x] = PHYSICAL_MAP[cell_y][cell_x]
-
-    return map_grid
-
-
-MAP = init_map()
-
-
-def movements_to_positions(movements_array):
-    """Convert from movement arrays [-> , <- ,..etc] to position paths [(x,y),..]."""
-    global ROBOTS_POSITIONS
-    path_array = []
-    obstacle_found = False
-    for k in range(K):
-        current_positions = []
-        for r in range(R):
-            x, y = ROBOTS_POSITIONS[r]
-            for move_idx in movements_array[r][k]:
-                dx, dy = MOVES[move_idx]
-                x, y = x + dx, y + dy
-                # Ensure within map bounds
-                x = max(0, min(N - 1, x))
-                y = max(0, min(M - 1, y))
-
-                if PHYSICAL_MAP[x][y] == 2:
-                    obstacle_found = True
-                    break
-
-                current_positions.append((x, y))
-            if not obstacle_found :
-                ROBOTS_POSITIONS = current_positions
-                path_array.append(current_positions)
-    return np.array(path_array, dtype=object)
 
 
 def positions_to_movements(path_array, initial_positions):
@@ -213,6 +161,50 @@ def manhattan_distance(p1, p2):
     return abs(p1[0] - p2[0]) + abs(p1[1] - p2[1])
 
 
+def compute_journey_cost(path_array: PathArray) -> float:
+    """
+    Compute cost for the complete journey across multiple optimization runs.
+    Skips energy and collision constraints since each run was already validated.
+    """
+    # Compute coverage including cells within vision range
+    visited_unexplored = set()
+    for r in range(path_array.shape[0]):
+        for t in range(path_array.shape[1]):
+            robot_y, robot_x = path_array[r][t]
+            # Check all cells within vision range using Manhattan distance
+            for dy in range(-config.ROBOT_VISION, config.ROBOT_VISION + 1):
+                for dx in range(-config.ROBOT_VISION, config.ROBOT_VISION + 1):
+                    if abs(dy) + abs(dx) <= config.ROBOT_VISION:
+                        cell_y = robot_y + dy
+                        cell_x = robot_x + dx
+                        # Check if cell is within map bounds
+                        if 0 <= cell_y < config.MAP_HEIGHT and 0 <= cell_x < config.MAP_WIDTH:
+                            # Check if cell was originally unexplored
+                            if config.INITIAL_MAP[cell_y, cell_x] == 0:
+                                visited_unexplored.add((cell_y, cell_x))
+    coverage_count = len(visited_unexplored)
+
+    # Compute connectivity
+    connectivity_sum = 0.0
+    for t in range(path_array.shape[1]):
+        positions_t = [path_array[i][t] for i in range(path_array.shape[0])]
+        for i in range(path_array.shape[0]):
+            for j in range(i + 1, path_array.shape[0]):
+                dist = euclidean_distance(positions_t[i], positions_t[j])
+                connectivity_sum += BaseOptimizer.compute_link_weight(dist, config.COMMUNICATION_RADIUS)
+
+    # Compute disconnection penalty
+    disconnection_penalty = BaseOptimizer.compute_disconnection_penalty(path_array)
+
+    # Calculate cost components
+    epsilon = 1e-6
+    coverage_cost = config.ALPHA / (coverage_count + epsilon)
+    connectivity_cost = config.BETA / (connectivity_sum + epsilon)
+    disconnection_cost = config.GAMMA * disconnection_penalty
+
+    return coverage_cost + connectivity_cost + disconnection_cost
+
+
 def build_optimizer(
     optimizer_key: str, visualizer: Optional[BaseVisualizer]
 ) -> BaseOptimizer:
@@ -278,11 +270,57 @@ def run_optimizer(
 
 
 def summarize_results(best_path: PathArray, best_cost: float) -> None:
-    """Print final optimization metrics and cost breakdown."""
+    """Print final optimization metrics and cost breakdown for complete journey."""
     print("\n" + "=" * 70)
-    print("FINAL RESULTS")
+    print("FINAL RESULTS - COMPLETE JOURNEY")
     print("=" * 70)
-    BaseOptimizer.cost_function(best_path, visualize=True)
+
+    # Compute metrics for visualization including cells within vision range
+    visited_unexplored = set()
+    for r in range(best_path.shape[0]):
+        for t in range(best_path.shape[1]):
+            robot_y, robot_x = best_path[r][t]
+            # Check all cells within vision range using Manhattan distance
+            for dy in range(-config.ROBOT_VISION, config.ROBOT_VISION + 1):
+                for dx in range(-config.ROBOT_VISION, config.ROBOT_VISION + 1):
+                    if abs(dy) + abs(dx) <= config.ROBOT_VISION:
+                        cell_y = robot_y + dy
+                        cell_x = robot_x + dx
+                        # Check if cell is within map bounds
+                        if 0 <= cell_y < config.MAP_HEIGHT and 0 <= cell_x < config.MAP_WIDTH:
+                            # Check if cell was originally unexplored
+                            if config.INITIAL_MAP[cell_y, cell_x] == 0:
+                                visited_unexplored.add((cell_y, cell_x))
+    coverage_count = len(visited_unexplored)
+
+    connectivity_sum = 0.0
+    for t in range(best_path.shape[1]):
+        positions_t = [best_path[i][t] for i in range(best_path.shape[0])]
+        for i in range(best_path.shape[0]):
+            for j in range(i + 1, best_path.shape[0]):
+                dist = euclidean_distance(positions_t[i], positions_t[j])
+                connectivity_sum += BaseOptimizer.compute_link_weight(dist, config.COMMUNICATION_RADIUS)
+
+    disconnection_penalty = BaseOptimizer.compute_disconnection_penalty(best_path)
+
+    epsilon = 1e-6
+    coverage_cost = config.ALPHA / (coverage_count + epsilon)
+    connectivity_cost = config.BETA / (connectivity_sum + epsilon)
+    disconnection_cost = config.GAMMA * disconnection_penalty
+
+    # Visualize coverage
+    BaseOptimizer.visualize_coverage(visited_unexplored, best_path)
+
+    print("\nCost Breakdown (lower is better):")
+    print(f"  Coverage count: {coverage_count}")
+    print(f"  Connectivity sum: {connectivity_sum:.2f}")
+    print(f"  Disconnection penalty: {disconnection_penalty:.2f}")
+    print("  ---")
+    print(f"  Coverage cost (α/{coverage_count}): {coverage_cost:.6f}")
+    print(f"  Connectivity cost (β/{connectivity_sum:.2f}): {connectivity_cost:.6f}")
+    print(f"  Disconnection cost (γ*{disconnection_penalty:.2f}): {disconnection_cost:.6f}")
+    print("  ---")
+    print(f"  Total Cost: {best_cost:.6f}")
     print(f"\nFinal Best Cost (lower is better): {best_cost:.6f}")
     print("=" * 70)
 
@@ -314,19 +352,46 @@ def main() -> None:
     visualizer = build_visualizer(optimizer_key, config.MAP)
 
     print("Generating initial feasible solution...")
-    initial_path = BaseOptimizer.create_dummy_solution()
-    initial_movements = BaseOptimizer.positions_to_movements(
-        initial_path, config.ROBOT_INITIAL_POSITIONS
-    )
 
     optimizer = build_optimizer(optimizer_key, visualizer)
     configure_fast_mode(optimizer)
 
     def optimization_task() -> None:
-        best_path, best_cost = run_optimizer(
-            optimizer_key, optimizer, initial_movements
-        )
-        summarize_results(best_path, best_cost)
+        robots_current_positions = config.ROBOT_INITIAL_POSITIONS
+        all_actual_paths = [[] for _ in range(len(robots_current_positions))]
+
+        for i in range(config.NUMBER_OF_OPTIMIZATION_RUNS):
+            print(f"\n--- Optimization Run {i + 1} ---")
+            initial_path = BaseOptimizer.create_dummy_solution(initial_positions=robots_current_positions)
+            initial_movements = BaseOptimizer.positions_to_movements(
+                initial_path, robots_current_positions
+            )
+            best_path, best_cost = run_optimizer(
+                optimizer_key, optimizer, initial_movements
+            )
+            # Convert best_path to movements for simulation
+            best_movements = BaseOptimizer.positions_to_movements(
+                best_path, robots_current_positions
+            )
+            robots_current_positions, actual_path = BaseOptimizer.simulate_movements(
+                best_movements, initial_positions=robots_current_positions
+            )
+
+            # Accumulate actual paths for each robot
+            # actual_path is structured as (timesteps, robots), transpose to (robots, timesteps)
+            for timestep_positions in actual_path:
+                for robot_idx, position in enumerate(timestep_positions):
+                    # Ensure position is stored as tuple, not numpy array
+                    all_actual_paths[robot_idx].append(tuple(position) if not isinstance(position, tuple) else position)
+
+        # Convert accumulated paths to numpy array
+        complete_path = np.array(all_actual_paths, dtype=object)
+
+        # For the complete journey, compute cost without energy/collision constraints
+        # since each individual run was already validated
+        complete_cost = compute_journey_cost(complete_path)
+
+        summarize_results(complete_path, complete_cost)
         if not config.ENABLE_VISUALIZATION:
             print("\nOptimization complete. Exiting...")
 
