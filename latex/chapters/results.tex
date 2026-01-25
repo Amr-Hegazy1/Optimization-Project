@@ -464,6 +464,7 @@ We ran two ABC configurations headlessly to understand sensitivity to colony siz
 \begin{table}[H]
 \centering
 \caption{ABC Parameter Sweep (headless runs)}
+\resizebox{\textwidth}{!}{%
 \begin{tabular}{@{}lcccccccc@{}}
 \toprule
 \textbf{Case} & \textbf{Colony} & \textbf{Cycles} & \textbf{Limit} & \textbf{Onlookers} & \textbf{Window} & \textbf{Attempts} & \textbf{Cost} & \textbf{Coverage (\%)} \\
@@ -472,6 +473,7 @@ ABC\_base & 24 & 200 & 12 & 0.5 & 10 & 5 & \textbf{14.4231} & \textbf{65.75} \\
 ABC\_large\_colony & 32 & 200 & 10 & 0.6 & 12 & 6 & 14.8782 & 62.25 \\
 \bottomrule
 \end{tabular}
+}%
 \label{tab:abc_sweep}
 \end{table}
 
@@ -489,6 +491,7 @@ We ran ten case studies with varying team sizes and step counts using the shared
 \begin{table}[H]
 \centering
 \caption{Case Study Results Across SA, GA, ACO, and ABC}
+\resizebox{\textwidth}{!}{%
 \begin{tabular}{@{}lccccccccccc@{}}
 \toprule
 \textbf{Case} & \textbf{Robots} & \textbf{Steps} & \textbf{SA Cost} & \textbf{GA Cost} & \textbf{ACO Cost} & \textbf{ABC Cost} & \textbf{SA Cov (\%)} & \textbf{GA Cov (\%)} & \textbf{ACO Cov (\%)} & \textbf{ABC Cov (\%)} & \textbf{Iters} \\
@@ -505,6 +508,7 @@ We ran ten case studies with varying team sizes and step counts using the shared
 10 & 2 & 100 & 59.9539 & 61.1751 & \textbf{39.8666} & 47.4840 & 22.00 & 18.00 & \textbf{42.25} & 27.25 & 150 \\
 \bottomrule
 \end{tabular}
+}%
 \label{tab:case_study_comparison}
 \end{table}
 
@@ -547,7 +551,7 @@ The visual results confirm the quantitative findings. ACO consistently achieves 
 
 \subsection{Performance Indices}
 
-To rigorously evaluate the optimization performance and consistency of Simulated Annealing (SA), Genetic Algorithm (GA), and Ant Colony Optimization (ACO), we conducted a comprehensive benchmarking study with 20 independent runs of each algorithm. This section presents the comparative analysis of key performance metrics.
+To rigorously evaluate the optimization performance and consistency of Simulated Annealing (SA), Genetic Algorithm (GA), Ant Colony Optimization (ACO), and Artificial Bee Colony (ABC), we conducted a comprehensive benchmarking study with 20 independent runs of each algorithm. This section presents the comparative analysis of key performance metrics.
 
 \subsubsection{Benchmark Methodology}
 
@@ -563,42 +567,45 @@ For each algorithm, we performed 20 independent runs using the configuration par
 
 \subsubsection{Performance Comparison Results}
 
-Table~\ref{tab:performance_indices_aco} presents the comparative performance metrics for all three algorithms over 20 independent runs.
+Table~\ref{tab:performance_indices_aco} presents the comparative performance metrics for all four algorithms over 20 independent runs.
 
 \begin{table}[H]
 \centering
+\small
 \caption{Function Minimization: Performance Indices (20 Runs)}
 \label{tab:performance_indices_aco}
-\begin{tabular}{|l|c|c|c|}
+\resizebox{\textwidth}{!}{%
+\begin{tabular}{|l|c|c|c|c|}
 \hline
-\textbf{Metric} & \textbf{Simulated Annealing} & \textbf{Genetic Algorithm} & \textbf{Ant Colony Optimization} \\
+\textbf{Metric} & \textbf{SA} & \textbf{GA} & \textbf{ACO} & \textbf{ABC} \\
 \hline
-Optimal Solution & $(13, 8), (5, 7), \ldots$ & $(6, 2), (9, 0), \ldots$ & $(17, 19), (8, 13)\ldots$ \\
+Optimal Solution & $(13, 8), (5, 7), \ldots$ & $(6, 2), (9, 0), \ldots$ & $(17, 19), (8, 13)\ldots$ & $(12, 1), (19, 4), \ldots$ \\
 \hline
-Optimal Fitness Value & $13.7049$ & $12.3180$ & $11.4888$ \\
+Optimal Fitness Value & $13.7049$ & $12.3180$ & $11.4888$ & $12.5941$ \\
 \hline
-Mean Fitness & $14.3852$ & $14.3379$ & $11.7522$ \\
+Mean Fitness & $14.3852$ & $14.3379$ & $11.7522$ & $12.9810$ \\
 \hline
-Standard Deviation & $3.6271 \times 10^{-1}$ & $2.1899 \times 10^{0}$ & $1.1334 \times 10^{-1}$ \\
+Standard Deviation & $3.6271 \times 10^{-1}$ & $2.1899 \times 10^{0}$ & $1.1334 \times 10^{-1}$ & $1.6921 \times 10^{-1}$ \\
 \hline
-Computational Time & $34.867$ sec & $165.515$ sec & $130.991$ sec \\
+Computational Time & $34.867$ sec & $165.515$ sec & $130.991$ sec & $69.035$ sec \\
 \hline
 \end{tabular}
+}%
 \end{table}
 
 \subsubsection{Analysis and Discussion}
 
-The benchmark results reveal significant differences in the optimization characteristics of the three algorithms:
+The benchmark results reveal significant differences in the optimization characteristics of the four algorithms:
 
 \begin{itemize}
     \item \textbf{Solution Quality:} 
-    Ant Colony Optimization achieved the best optimal fitness value of $11.4888$, outperforming Genetic Algorithm ($12.3180$) and Simulated Annealing ($13.7049$). ACO's ability to construct solutions using both pheromone trails and heuristic information allows it to find superior paths that balance coverage and connectivity more effectively than the other methods.
+    Ant Colony Optimization achieved the best optimal fitness value of $11.4888$, outperforming Genetic Algorithm ($12.3180$), Artificial Bee Colony ($12.5941$), and Simulated Annealing ($13.7049$). While GA slightly outperformed ABC in best-case cost, ABC delivered a better typical outcome (mean $12.9810$ vs $14.3379$), suggesting more reliable search on this instance.
 
     \item \textbf{Consistency and Reliability:}
-    ACO demonstrated the highest consistency with the lowest standard deviation ($0.1133$), compared to SA ($0.3627$) and GA ($2.1899$). This indicates that ACO reliably converges to high-quality solutions across different runs, whereas GA exhibits significant variance, likely due to the stochastic nature of its crossover and mutation operators and the random initial population.
+    ACO demonstrated the highest consistency with the lowest standard deviation ($0.1133$). ABC also showed strong consistency ($0.1692$), substantially lower variance than SA ($0.3627$) and especially GA ($2.1899$), indicating stable convergence across runs.
 
     \item \textbf{Computational Efficiency:}
-    Simulated Annealing remains the fastest algorithm ($34.867$ sec), but its solution quality is the lowest. ACO ($130.991$ sec) is faster than GA ($165.515$ sec) while delivering significantly better results. This suggests that ACO offers a better trade-off between solution quality and computational time for this specific multi-robot path planning problem.
+    Simulated Annealing remains the fastest algorithm ($34.867$ sec), but its solution quality is the lowest. ABC ($69.035$ sec) offers a strong middle ground: notably faster than ACO ($130.991$ sec) and GA ($165.515$ sec) while improving solution quality over both SA and GA on average. ACO remains the best trade-off when prioritizing solution quality.
 \end{itemize}
 
 \section{Algorithm Validation}

@@ -45,12 +45,74 @@ class ABCOptimizer(BaseOptimizer):
         return path, cost
 
     def _random_feasible_movements(self) -> MovementArray:
-        """Generate a random feasible movement matrix."""
+        """Generate a random feasible movement matrix.
+
+        The default `create_dummy_solution()` may take a long time to find a
+        collision-free multi-robot path for larger horizons. For ABC we need to
+        quickly populate the initial colony, so we use a lightweight constructive
+        sampler that enforces hard feasibility constraints by construction.
+        """
+
+        initial_positions = list(config.ROBOT_INITIAL_POSITIONS)
+        path_length = int(config.PATH_LENGTH)
+
+        for _ in range(200):
+            current_positions = initial_positions[:]
+            paths: List[List[Tuple[int, int]]] = [[] for _ in range(len(current_positions))]
+            energy_used = [0] * len(current_positions)
+            feasible = True
+
+            for _t in range(path_length):
+                occupied: set[Tuple[int, int]] = set()
+                next_positions: List[Tuple[int, int]] = []
+
+                for r, (x, y) in enumerate(current_positions):
+                    candidates: List[Tuple[int, int]] = []
+                    for dx, dy in config.MOVES:
+                        nx, ny = x + dx, y + dy
+                        if not (0 <= nx < config.MAP_HEIGHT and 0 <= ny < config.MAP_WIDTH):
+                            continue
+                        if config.MAP[nx, ny] == config.CELL_OBSTACLE:
+                            continue
+                        if (nx, ny) in occupied:
+                            continue
+
+                        step_energy = abs(dx) + abs(dy)
+                        if energy_used[r] + step_energy > config.ENERGY_BUDGET:
+                            continue
+
+                        candidates.append((nx, ny))
+
+                    if not candidates:
+                        feasible = False
+                        break
+
+                    nx, ny = random.choice(candidates)
+                    occupied.add((nx, ny))
+                    next_positions.append((nx, ny))
+                    paths[r].append((nx, ny))
+                    energy_used[r] += abs(nx - x) + abs(ny - y)
+
+                if not feasible:
+                    break
+
+                current_positions = next_positions
+
+            if feasible:
+                path_array = np.array(paths, dtype=object)
+                if self.is_feasible(
+                    path_array,
+                    initial_positions=initial_positions,
+                    path_length=path_length,
+                ):
+                    return self.positions_to_movements(path_array, initial_positions)
+
+        # Fallback to the generic (slower) feasible generator.
         path = self.create_dummy_solution(
-            initial_positions=config.ROBOT_INITIAL_POSITIONS,
-            path_length=config.PATH_LENGTH,
+            initial_positions=initial_positions,
+            path_length=path_length,
         )
-        return self.positions_to_movements(path, config.ROBOT_INITIAL_POSITIONS)
+        return self.positions_to_movements(path, initial_positions)
 
     def _generate_neighbor(
         self,

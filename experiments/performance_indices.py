@@ -4,6 +4,7 @@ import time
 import numpy as np
 from typing import List, Tuple
 import argparse
+import random
 
 # Add the project root to the python path
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
@@ -12,6 +13,7 @@ import config
 from simulated_annealing import SimulatedAnnealing
 from genetic import GeneticOptimizer
 from ant_colony import AntColonyOptimizer
+from abc_optimizer import ABCOptimizer
 
 def run_benchmark(algorithm_name: str, num_runs: int = 20):
     print(f"\nStarting benchmark for {algorithm_name} with {num_runs} runs...")
@@ -85,6 +87,19 @@ def run_benchmark(algorithm_name: str, num_runs: int = 20):
             else:
                 best_cost = float('inf')
                 best_solution = None
+        
+        elif algorithm_name == "ABC":
+            optimizer = ABCOptimizer(
+                colony_size=24,
+                max_cycles=200,
+                limit=12,
+                onlooker_ratio=0.5,
+                neighbor_window=10,
+                neighbor_attempts=5,
+                visualizer=None,
+            )
+            best_movements, best_cost = optimizer.run(initial_movements=None)
+            best_solution = optimizer.movements_to_positions(best_movements, config.ROBOT_INITIAL_POSITIONS)
 
         end_time = time.time()
         
@@ -131,9 +146,20 @@ def main():
     parser = argparse.ArgumentParser(description='Run optimization benchmarks.')
     parser.add_argument('--runs', type=int, default=20, help='Number of runs per algorithm')
     parser.add_argument('--test', action='store_true', help='Run in test mode (reduced parameters)')
+    parser.add_argument(
+        '--algos',
+        nargs='+',
+        default=["SA", "GA", "ACO", "ABC"],
+        choices=["SA", "GA", "ACO", "ABC"],
+        help='Algorithms to benchmark (subset of: SA GA ACO ABC)',
+    )
+    parser.add_argument('--seed', type=int, default=None, help='Random seed for reproducibility')
     args = parser.parse_args()
 
     num_runs = args.runs
+    if args.seed is not None:
+        np.random.seed(args.seed)
+        random.seed(args.seed)
     
     if args.test:
         print("Running in TEST mode with reduced parameters.")
@@ -142,19 +168,21 @@ def main():
         
     results = {}
     
-    # Run SA
-    results["Simulated Annealing"] = run_benchmark("SA", num_runs)
-    
-    # Run GA
-    results["Genetic Algorithm"] = run_benchmark("GA", num_runs)
-    
-    # Run ACO
-    results["Ant Colony Optimization"] = run_benchmark("ACO", num_runs)
+    name_map = {
+        "SA": "Simulated Annealing",
+        "GA": "Genetic Algorithm",
+        "ACO": "Ant Colony Optimization",
+        "ABC": "Artificial Bee Colony",
+    }
+
+    for algo in args.algos:
+        results[name_map[algo]] = run_benchmark(algo, num_runs)
     
     # Print Table
     print("\n" + "="*80)
-    print(f"{'Metric':<25} | {'Simulated Annealing':<20} | {'Genetic Algorithm':<20} | {'Ant Colony Optimization':<20}")
-    print("-" * 90)
+    header = f"{'Metric':<25} | " + " | ".join([f"{name_map[a]:<20}" for a in args.algos])
+    print(header)
+    print("-" * (len(header) + 5))
     
     metrics = [
         "Optimal Solution",
@@ -188,7 +216,7 @@ def main():
 
     for metric in metrics:
         row = f"{metric:<25} | "
-        for algo in ["Simulated Annealing", "Genetic Algorithm", "Ant Colony Optimization"]:
+        for algo in [name_map[a] for a in args.algos]:
             val = data[algo].get(metric, "N/A")
             row += f"{val:<20} | "
         print(row)
