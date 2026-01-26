@@ -115,13 +115,47 @@ The "Algorithm Selection Problem," first formalized by Rice \cite{rice1976algori
 \label{sec:methodology}
 
 \subsection{Problem Formulation}
-We model the environment as a discrete grid map $M \in \{0, 1\}^{H \times W}$, where 0 represents free space and 1 represents obstacles. A team of $R$ robots must plan paths $P = \{p_1, \dots, p_R\}$ over a time horizon $T$. The objective function $J(P)$ minimizes a weighted cost:
-
+We consider a team of $R$ identical robots exploring an (initially unknown) discrete grid map
+$M \in \{0,1\}^{H\times W}$ (0: free, 1: obstacle). The position of robot $i$ at time $t$ is
+$p_{i,t}=(x_{i,t},y_{i,t})\in\{1,\ldots,H\}\times\{1,\ldots,W\}$, with given initial positions
+$\{p_{i,0}\}_{i=1}^R$. Robots move synchronously on a 4-connected grid:
 \begin{equation}
-    J(P) = \frac{\alpha}{|C(P)| + \epsilon} + \frac{\beta}{\sum_{t} \sum_{i<j} w_{ij}(t) + \epsilon} + \gamma \cdot \Omega(P)
+    \lVert p_{i,t}-p_{i,t-1}\rVert_1 \le 1,\quad \forall i\in\{1,\ldots,R\},\; \forall t\ge 1 .
 \end{equation}
+Each robot has an energy budget $E$ (maximum number of cell moves),
+\begin{equation}
+    D_{i,T}=\sum_{t=1}^{T}\lVert p_{i,t}-p_{i,t-1}\rVert_1 \le E,\quad \forall i .
+\end{equation}
+Let $C(P)=\bigcup_{i=1}^{R}\bigcup_{t=0}^{T}\{p_{i,t}\}$ be the set of covered cells.
 
-where $C(P)$ is the set of unique cells covered, $w_{ij}(t)$ is the communication link quality between robot $i$ and $j$ at time $t$ (inversely proportional to distance), and $\Omega(P)$ is a penalty term for network disconnections. The weights $\alpha, \beta, \gamma$ allow mission operators to prioritize exploration vs. safety.
+Connectivity is modeled via a distance-weighted link quality between robot pair $(i,j)$:
+\begin{equation}
+    w_{ij}(t)=
+    \begin{cases}
+    \dfrac{1}{1+d_{ij}(t)}, & d_{ij}(t)\le r,\\
+    0, & \text{otherwise,}
+    \end{cases}
+\end{equation}
+where $d_{ij}(t)=\lVert p_{i,t}-p_{j,t}\rVert_2$ and $r$ is the communication radius. We also form a
+communication graph $G_t$ with an edge $(i,j)$ if $d_{ij}(t)\le\tau$ (connectivity threshold). Robots
+outside the largest connected component incur a disconnection penalty proportional to their distance to
+the main network:
+\begin{equation}
+    P_{\text{disconnect}}=\sum_{t=0}^{T}\sum_{i=1}^{R}\delta_{i,t}\,d_{i,\text{net}}(t),
+\end{equation}
+where $\delta_{i,t}\in\{0,1\}$ indicates disconnection at time $t$, and $d_{i,\text{net}}(t)$ is the
+minimum distance from robot $i$ to any robot in the main component.
+
+We minimize a composite objective (lower is better):
+\begin{equation}
+    J(P)=
+    \frac{\alpha}{|C(P)|+\epsilon}
+    +\frac{\beta}{\sum_{t}\sum_{i<j} w_{ij}(t)+\epsilon}
+    +\gamma\cdot P_{\text{disconnect}},
+\end{equation}
+subject to standard feasibility constraints (map bounds, obstacle avoidance, and no same-cell collisions).
+The weights $\alpha,\beta,\gamma$ trade off coverage, connectivity, and robustness to network fragmentation,
+and $\epsilon$ is a small constant for numerical stability.
 
 \subsection{System Architecture}
 The \systemname{} architecture (Fig.~\ref{fig:architecture}) operates in three stages. First, the \textbf{Feature Extractor} analyzes the map and initial robot configuration. Second, the \textbf{Router} (a pre-trained classifier) predicts which optimizer is best suited for the instance. Finally, the selected \textbf{Optimizer} executes the search.
@@ -135,12 +169,12 @@ The \systemname{} architecture (Fig.~\ref{fig:architecture}) operates in three s
 ]
   % Styles
   \tikzstyle{block} = [rectangle, rounded corners=3pt, minimum width=2.5cm, minimum height=1.0cm, text centered, draw=black!60, fill=white, drop shadow]
-  \tikzstyle{router} = [rectangle, rounded corners=3pt, minimum width=3cm, minimum height=1.2cm, draw=primary, fill=primary!10, line width=1pt]
+  \tikzstyle{router} = [rectangle, rounded corners=3pt, minimum width=3cm, minimum height=1.2cm, text centered, draw=primary, fill=primary!10, line width=1pt]
    
   % Input
   \node[block, fill=lightgray] (input) {Input Map \& Config};
   \node[block, below=of input] (features) {Feature Extraction};
-  \node[router, below=of features] (router) {\textbf{ML Router} \\ (Random Forest)};
+  \node[router, below=of features] (router) {\shortstack{\textbf{ML Router}}};
    
   % Optimizers (Parallel) - centered row under the router
   \node[block, below=1.35cm of router, xshift=-4.8cm, fill=accent!20] (sa) {SA};
@@ -409,6 +443,46 @@ ABC & 24.8959 & 46.85 & 1/10 \\
 \caption{Convergence comparison for Case~1 (6 robots, 125 steps). ACO reaches the lowest final cost and highest coverage, while ABC is competitive with GA.}
 \label{fig:case1_comparison}
 \end{figure}
+
+\subsubsection{Trajectory Visualization}
+Aggregate metrics and convergence curves do not always convey \emph{how} robots distribute spatially. Fig.~\ref{fig:traj_visualization} shows qualitative examples of the resulting multi-robot trajectories and covered area on the grid, providing an intuitive view of constraint satisfaction (obstacle avoidance, no collisions) and team dispersion under connectivity pressure.
+
+\begin{figure}[t]
+\centering
+\begin{minipage}[t]{0.48\columnwidth}
+    \centering
+    \includegraphics[width=\linewidth]{Figures/visualization.png}
+\end{minipage}\hfill
+\begin{minipage}[t]{0.48\columnwidth}
+    \centering
+    \includegraphics[width=\linewidth]{Figures/c1photo.png}
+\end{minipage}
+\caption{Example trajectory and coverage visualizations on the $20\times20$ grid. Left: SA solution illustrating fast but locally constrained exploration. Right: GA best-case (C1) showing coordinated dispersion while maintaining connectivity.}
+\label{fig:traj_visualization}
+\end{figure}
+
+\subsubsection{Performance Indices}
+To quantify solution quality, robustness, and computational efficiency, we report performance indices over 20 independent runs of each solver on the Case~1 configuration (6 robots, 125 steps, $\alpha=3000$, $\beta=500$, $\gamma=4.0$). Each run uses a different random seed/initial solution (SA/GA/ABC) or stochastic construction (ACO). Table~\ref{tab:performance_indices} summarizes the best cost, mean cost, standard deviation, and mean wall-clock time per run.
+
+\begin{table}[t]
+\centering
+\caption{Performance indices over 20 independent runs on Case~1 (lower cost is better).}
+\label{tab:performance_indices}
+\small
+\resizebox{\columnwidth}{!}{%
+\begin{tabular}{@{}lcccc@{}}
+\toprule
+\textbf{Metric} & \textbf{SA} & \textbf{GA} & \textbf{ACO} & \textbf{ABC} \\
+\midrule
+Best cost & 13.7049 & 12.3180 & \textbf{11.4888} & 12.5941 \\
+Mean cost & 14.3852 & 14.3379 & \textbf{11.7522} & 12.9810 \\
+Std. dev. & $3.63{\times}10^{-1}$ & $2.19{\times}10^{0}$ & $1.13{\times}10^{-1}$ & $1.69{\times}10^{-1}$ \\
+Mean time (s) & 34.867 & 165.515 & 130.991 & 69.035 \\
+\bottomrule
+\end{tabular}}
+\end{table}
+
+These indices reinforce the qualitative behavior seen in Fig.~\ref{fig:traj_visualization}: ACO delivers the best and most consistent solutions, SA is the fastest but lowest-quality solver, and ABC offers a favorable middle ground in runtime with competitive average cost.
 
 \subsection{GA Hyperparameter Sensitivity}
 To validate that GA performance is not an artifact of poor tuning, we varied the GA population size and number of generations under fixed weights ($\alpha=3000$, $\beta=500$) on the $20\times20$ grid (Table~\ref{tab:ga_sensitivity}). The best configuration in this sweep reaches 76.2\% coverage, but still trails tuned ACO (93.75\% coverage with the AS baseline).
@@ -725,4 +799,3 @@ Map-only (4) & 0.1176 & 0.5447 & 5.0088 & 0.000 \\
 \end{thebibliography}
 
 \end{document}
-
