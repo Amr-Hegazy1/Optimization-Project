@@ -66,7 +66,7 @@
 \IEEEauthorblockA{\textit{Faculty of Media Enginerring \& Technology (CSEN), Faculty of Engineering and Materials Science (MCTR)} \\
 \textit{The German University in Cairo}\\
 Cairo, Egypt \\
-\{ahd.mostafa, amr.hazem, fathy.ashraf, mohamed.wael, youssef.elbrolosy, ziad.abdelrahman\}@student.guc.edu.eg}
+\{ahd.elsharkawy, amr.hazem, fathy.metwally, mohamed.wael, youssef.elbrolosy, ziad.abdelrahman\}@student.guc.edu.eg}
 \IEEEauthorblockA{\IEEEauthorrefmark{1}These authors contributed equally to this work.}
 }
 
@@ -159,10 +159,10 @@ and $\epsilon$ is a small constant for numerical stability.
 
 \subsection{System Architecture}
 The \systemname{} architecture (Fig.~\ref{fig:architecture}) operates in three stages. First, the \textbf{Feature Extractor} analyzes the map and initial robot configuration. Second, the \textbf{Router} (a pre-trained classifier) predicts which optimizer is best suited for the instance. Finally, the selected \textbf{Optimizer} executes the search.
-\FloatBarrier
 
-\begin{figure*}
+\begin{figure}[t]
 \centering
+\resizebox{\columnwidth}{!}{%
 \begin{tikzpicture}[
   node distance=0.8cm,
   every node/.style={font=\sffamily\footnotesize}
@@ -207,9 +207,10 @@ The \systemname{} architecture (Fig.~\ref{fig:architecture}) operates in three s
   \draw[->, >=Stealth, thick] (aco.south) -- (aco_drop) -| (out_aco);
   \draw[->, >=Stealth, thick] (abc.south) |- (output.east);
 \end{tikzpicture}
+}
 \caption{System architecture. The Router dynamically selects the metaheuristic (SA, GA, ACO, or ABC) based on extracted instance features, avoiding the computational cost of running suboptimal solvers.}
 \label{fig:architecture}
-\end{figure*}
+\end{figure}
 
 \subsection{Feature Space Definition}
 \label{sec:features}
@@ -637,6 +638,28 @@ We evaluate several ablations to characterize which feature groups are essential
 \end{equation}
 where $J(\cdot)$ is the objective cost produced by a solver under the fixed budget, $\hat{y}(S)$ is the Router-selected solver, and $\mathcal{Y}$ is the solver portfolio.
 
+\begin{table}[t]
+\centering
+\caption{Router ablations on the test set ($N=1836$).}
+\label{tab:router_ablations}
+\small
+\setlength{\tabcolsep}{3.5pt}
+\resizebox{\columnwidth}{!}{%
+\begin{tabular}{@{}lcccc@{}}
+\toprule
+\textbf{Variant} & \textbf{Acc.} &
+\textbf{$\mathbb{P}(\hat{y}=\mathrm{SA}\mid y=\mathrm{ACO})$} &
+\textbf{Mean Rel. Regret} & \textbf{$t_{\mathrm{SA}}$} \\
+\midrule
+Full (17 features) & 0.9499 & 0.0000 & 0.0639 & 0.475 \\
+No topology (12) & 0.9483 & 0.0000 & 0.0634 & 0.595 \\
+No weights (14) & 0.9466 & 0.0000 & 0.0376 & 0.440 \\
+Topology + ($R$, threshold) (7) & 0.8851 & 0.0011 & 0.6615 & 0.455 \\
+Map-only (4) & 0.1176 & 0.5447 & 5.0088 & 0.000 \\
+\bottomrule
+\end{tabular}}
+\end{table}
+
 Removing all topology features only slightly reduces accuracy, indicating that the constraint parameters alone already convey substantial instance difficulty. In contrast, restricting the router to topology and threshold features (7 features) significantly increases regret and introduces a small but non-zero critical error rate. Finally, a map-only router collapses to the class prior because map features are constant in this dataset, and it fails the fail-safe criterion.
 
 \subsection{Feature Importance Analysis}
@@ -645,7 +668,7 @@ To understand the decision logic, we analyzed the Gini importance of the input f
 
 The \textbf{Connectivity Threshold} (Importance $\approx 0.315$) and \textbf{Start Connectivity Edge Fraction} ($\approx 0.274$) are the dominant predictors, followed by minimum pairwise distances and horizon-related features. This aligns with our design intuition: when the initial communication graph is sparse (low edge fraction under the threshold), constructive search is required to recover connectivity, whereas dense initial graphs can be handled with lighter perturbative optimization.
 
-\FloatBarrier
+%\FloatBarrier
 
 \section{Discussion}
 \label{sec:discussion}
@@ -674,19 +697,16 @@ behaviors. \textbf{ABC} occupies an intermediate regime: while its greedy local 
 limits global optimality, its feasibility-preserving perturbations allow it to
 remain competitive in later iterations when constraint satisfaction becomes the
 dominant factor.
-A limitation of this study is the fixed grid size ($20 \times 20$). However, the underlying combinatorial complexity ($4^{R \times T}$) remains extremely large, and the key topological features influencing router behavior—such as communication graph density and connectivity bottlenecks—are largely independent of scale. Consequently, we expect that the learned routing logic and the relative roles of the solvers will generalize effectively to larger environments.
-\FloatBarrier
+A limitation of this study is the fixed grid size ($20 \times 20$). However, the underlying combinatorial complexity ($4^{R \times T}$) remains extremely large, and the key topological features influencing router behavior, such as communication graph density and connectivity bottlenecks, are largely independent of scale. Consequently, we expect that the learned routing logic and the relative roles of the solvers will generalize effectively to larger environments.
 
-\begin{figure}[h] 
+\begin{figure}[t]
 \centering
-\makebox[\columnwidth][l]{%
-\hspace{-2.8cm}%
-\resizebox{1.35\columnwidth}{!}{%
+\resizebox{\columnwidth}{!}{%
 \begin{tikzpicture}
   \begin{axis}[
     xbar,
     width=\columnwidth,
-    height=5.5cm,
+    height=4.2cm,
     symbolic y coords={
       Conn. Threshold,
       Start Edge Frac,
@@ -713,12 +733,12 @@ A limitation of this study is the fixed grid size ($20 \times 20$). However, the
     },
     point meta=explicit symbolic,
     y tick label style={text width=4.5cm, align=right},
-    bar width=14pt,
+    bar width=11pt,
     grid=major,
     grid style={line width=0.3pt, gray!30},
     axis line style={-},
     tick style={major tick length=0pt},
-    enlarge y limits=0.15
+    enlarge y limits=0.10
   ]
     \addplot[
       fill=primary,
@@ -733,40 +753,17 @@ A limitation of this study is the fixed grid size ($20 \times 20$). However, the
       (0.058,Path Length) [0.058]
     };
   \end{axis}
-\end{tikzpicture}}}
+\end{tikzpicture}}
 
 \caption{Feature Importance (RF Gini). Connectivity threshold and start connectivity edge fraction dominate routing decisions. In this dataset, map features have zero importance because the map statistics are constant.}
 \label{fig:feat_importance}
 \end{figure}
 
-\FloatBarrier
-
 \section{Conclusion}
 \label{sec:conclusion}
 
-We presented \systemname{}, a connectivity-aware multi-robot path planning framework that leverages machine learning to adaptively select optimization strategies. Our evaluation confirms that the router achieves 94.99\% accuracy and exhibits a fail-safe capability, avoiding the selection of weak solvers for complex tasks. This reliability suggests that meta-learning routers are a viable path toward autonomous mission planning in heterogeneous environments.
-Future work includes: (1) extending to dynamic obstacle environments, (2) incorporating real-time replanning triggers, (3) validating on physical robot platforms, and (4) exploring multi-objective routing beyond cost minimization.
-
-\begin{table}[t]
-\centering
-\caption{Router ablations on the test set ($N=1836$).}
-\label{tab:router_ablations}
-\hspace{-0.7cm}%
-\resizebox{1.1\columnwidth}{!}{%
-\begin{tabular}{lcccc}
-\toprule
-\textbf{Variant} & \textbf{Acc.} &
-\textbf{$\mathbb{P}(\hat{y}=\mathrm{SA}\mid y=\mathrm{ACO})$} &
-\textbf{Mean Rel. Regret} & \textbf{$t_{\mathrm{SA}}$} \\
-\midrule
-Full (17 features) & 0.9499 & 0.0000 & 0.0639 & 0.475 \\
-No topology (12) & 0.9483 & 0.0000 & 0.0634 & 0.595 \\
-No weights (14) & 0.9466 & 0.0000 & 0.0376 & 0.440 \\
-Topology + ($R$, threshold) (7) & 0.8851 & 0.0011 & 0.6615 & 0.455 \\
-Map-only (4) & 0.1176 & 0.5447 & 5.0088 & 0.000 \\
-\bottomrule
-\end{tabular}}
-\end{table}
+We presented \systemname{}, a connectivity-aware multi-robot path planning framework that leverages machine learning to adaptively select optimization strategies. Our evaluation confirms that the router achieves 94.99\% accuracy and exhibits a fail-safe capability, avoiding the selection of weak solvers for complex tasks. In addition to improving solution quality relative to lightweight baselines, adaptive routing reduces computational overhead by avoiding unnecessary runs of heavy solvers when instances are easy.
+Future work includes: (1) extending to obstacle-rich and dynamic environments, (2) incorporating real-time replanning triggers, (3) validating on physical robot platforms, and (4) exploring multi-objective routing beyond cost minimization (e.g., explicit runtime--quality trade-offs).
 
 % Prevent deferred figures/tables from appearing inside the references.
 \FloatBarrier
